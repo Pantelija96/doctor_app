@@ -13,5 +13,5 @@ class MainWindow(QMainWindow):
 		layout = QVBoxLayout(central_widget)
 
 		# Add Hello World label
-		label = QLabel("Hello World")
+		label = QLabel("Pocetni Ekran")
 		layout.addWidget(label)
