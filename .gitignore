@@ -1,23 +1,57 @@
-Python
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
 
-pycache/ *.pyc *.pyo *.pyd .Python Pipfile.lock # Will be included in repo for reproducibility env/ venv/ *.egg-info/ dist/ build/
+# pipenv
+.pipenv/
+Pipfile.lock.bak
+.virtualenvs/
 
-pipenv
+# IDE and Editors
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
 
-.pipenv/ Pipfile.lock.bak
+# OS-specific files
+.DS_Store
+Thumbs.db
 
-IDE
+# Project-specific runtime folders
+audio/
+backup/
+logs/
+reports/
 
-.idea/ *.iml .vscode/
-
-OS
-
-.DS_Store Thumbs.db
-
-App data
-
+# App data
 %APPDATA%/DoctorApp/
 
-PyInstaller
-
+# PyInstaller
 *.spec
+
+# Testing and coverage
+.coverage
+coverage.xml
+*.cover
+.pytest_cache/
+
+# Environment variables
+.env
+*.env
+
+# Temporary files
+*.bak
+*.tmp
+*.log
+
+# Whisper model files (large, cached locally)
+*.bin
+*.pt
+*.pth
