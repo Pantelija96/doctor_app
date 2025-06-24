@@ -1,0 +1,23 @@
+Python
+
+pycache/ *.pyc *.pyo *.pyd .Python Pipfile.lock # Will be included in repo for reproducibility env/ venv/ *.egg-info/ dist/ build/
+
+pipenv
+
+.pipenv/ Pipfile.lock.bak
+
+IDE
+
+.idea/ *.iml .vscode/
+
+OS
+
+.DS_Store Thumbs.db
+
+App data
+
+%APPDATA%/DoctorApp/
+
+PyInstaller
+
+*.spec
