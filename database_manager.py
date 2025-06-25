@@ -102,7 +102,6 @@ class DatabaseManager:
             self.backup_db()
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                # Delete associated appointments and audio files
                 cursor.execute("SELECT diagnose_sound FROM appointment WHERE id_patient = ?", (patient_id,))
                 for row in cursor.fetchall():
                     if row[0]:
@@ -143,53 +142,10 @@ class DatabaseManager:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT id, full_name, phone_number, email FROM patient WHERE full_name LIKE ? LIMIT 100",
+                    "SELECT * FROM patient WHERE full_name LIKE ? LIMIT 100",
                     (f"%{query}%",)
                 )
                 return cursor.fetchall()
         except sqlite3.Error as e:
             log_error(f"Search patients failed: {e}")
-            return []
-
-    def add_appointment(self, id_patient, date, diagnose_text=None, diagnose_sound=None):
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO appointment (id_patient, date, diagnose_text, diagnose_sound) VALUES (?, ?, ?, ?)",
-                    (id_patient, date, diagnose_text, diagnose_sound)
-                )
-                conn.commit()
-                return cursor.lastrowid
-        except sqlite3.Error as e:
-            log_error(f"Add appointment failed: {e}")
-            return None
-
-    def delete_appointment(self, appointment_id):
-        try:
-            self.backup_db()
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT diagnose_sound FROM appointment WHERE id = ?", (appointment_id,))
-                sound_path = cursor.fetchone()[0]
-                if sound_path:
-                    try:
-                        os.remove(sound_path)
-                    except OSError:
-                        pass
-                cursor.execute("DELETE FROM appointment WHERE id = ?", (appointment_id,))
-                conn.commit()
-                return cursor.rowcount > 0
-        except sqlite3.Error as e:
-            log_error(f"Delete appointment failed: {e}")
-            return False
-
-    def get_appointments_by_patient(self, patient_id):
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT id, date, diagnose_text FROM appointment WHERE id_patient = ?", (patient_id,))
-                return cursor.fetchall()
-        except sqlite3.Error as e:
-            log_error(f"Get appointments failed: {e}")
             return []
