@@ -15,6 +15,7 @@ def main():
 	print("Database initialized successfully.")
 
 	app = QApplication(sys.argv)
+
 	window = MainWindow(db_manager)
 	window.show( )
 	sys.exit(app.exec( ))
