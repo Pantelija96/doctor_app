@@ -149,3 +149,72 @@ class DatabaseManager:
         except sqlite3.Error as e:
             log_error(f"Search patients failed: {e}")
             return []
+
+    def add_appointment(self, id_patient, date, diagnose_text=None, diagnose_sound=None):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO appointment (id_patient, date, diagnose_text, diagnose_sound) "
+                    "VALUES (?, ?, ?, ?)",
+                    (id_patient, date, diagnose_text, diagnose_sound)
+                )
+                conn.commit()
+                return cursor.lastrowid
+        except sqlite3.Error as e:
+            log_error(f"Add appointment failed: {e}")
+            return None
+
+    def update_appointment(self, appointment_id, id_patient, date, diagnose_text=None, diagnose_sound=None):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE appointment SET id_patient = ?, date = ?, diagnose_text = ?, diagnose_sound = ? "
+                    "WHERE id = ?",
+                    (id_patient, date, diagnose_text, diagnose_sound, appointment_id)
+                )
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            log_error(f"Update appointment failed: {e}")
+            return False
+
+    def delete_appointment(self, appointment_id):
+        try:
+            self.backup_db()
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT diagnose_sound FROM appointment WHERE id = ?", (appointment_id,))
+                row = cursor.fetchone()
+                if row and row[0]:
+                    try:
+                        os.remove(row[0])
+                    except OSError:
+                        pass
+                cursor.execute("DELETE FROM appointment WHERE id = ?", (appointment_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            log_error(f"Delete appointment failed: {e}")
+            return False
+
+    def get_appointment(self, appointment_id):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM appointment WHERE id = ?", (appointment_id,))
+                return cursor.fetchone()
+        except sqlite3.Error as e:
+            log_error(f"Get appointment failed: {e}")
+            return None
+
+    def get_all_appointments(self):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, id_patient, date, diagnose_text FROM appointment")
+                return cursor.fetchall()
+        except sqlite3.Error as e:
+            log_error(f"Get all appointments failed: {e}")
+            return []
