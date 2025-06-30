@@ -4,6 +4,7 @@ import shutil
 import datetime
 from utils import log_error
 
+
 class DatabaseManager:
     def __init__(self, db_path):
         self.db_path = db_path
@@ -67,7 +68,8 @@ class DatabaseManager:
         except Exception as e:
             log_error(f"Database backup failed: {e}")
 
-    def add_patient(self, name, last_name, birthday, phone_number=None, email=None, gender=None, address=None, note=None):
+    def add_patient(self, name, last_name, birthday, phone_number=None, email=None, gender=None, address=None,
+                    note=None):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -82,14 +84,16 @@ class DatabaseManager:
             log_error(f"Add patient failed: {e}")
             return None
 
-    def update_patient(self, patient_id, name, last_name, birthday, phone_number=None, email=None, gender=None, address=None, note=None):
+    def update_patient(self, patient_id, name, last_name, birthday, phone_number=None, email=None, gender=None,
+                       address=None, note=None):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute(
                     "UPDATE patient SET name = ?, last_name = ?, full_name = ?, phone_number = ?, email = ?, "
                     "gender = ?, birthday = ?, address = ?, note = ? WHERE id = ?",
-                    (name, last_name, f"{name} {last_name}", phone_number, email, gender, birthday, address, note, patient_id)
+                    (name, last_name, f"{name} {last_name}", phone_number, email, gender, birthday, address, note,
+                     patient_id)
                 )
                 conn.commit()
                 return cursor.rowcount > 0
