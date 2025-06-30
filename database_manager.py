@@ -131,7 +131,7 @@ class DatabaseManager:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT id, full_name, phone_number, email FROM patient")
+                cursor.execute("SELECT id, full_name, birthday, address, gender, note FROM patient")
                 return cursor.fetchall()
         except sqlite3.Error as e:
             log_error(f"Get all patients failed: {e}")

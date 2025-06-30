@@ -1,12 +1,87 @@
 import os
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QListWidget, QLineEdit, QTextEdit, QFrame, QGraphicsDropShadowEffect, QSizePolicy, QGridLayout
+    QListWidget, QLineEdit, QTextEdit, QFrame, QGraphicsDropShadowEffect, QSizePolicy, QGridLayout, QListWidgetItem
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPixmap, QFontDatabase, QFont, QIcon
 from database_manager import DatabaseManager
 
+class PatientCard(QFrame):
+    def __init__(self, name: str, birth_year: str, selected: bool = False):
+        super().__init__()
+        self.selected = selected
+        self.hovered = False
+
+        self.setObjectName("PatientCard")
+        self.setFixedHeight(70)
+        self.setStyleSheet("""
+            QFrame#PatientCard {
+                background-color: white;
+                border-radius: 12px;
+            }
+        """)
+
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover)
+
+        # Senka
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(16)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(0, 0, 0, 40))
+        self.setGraphicsEffect(shadow)
+
+        # Layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 8, 16, 8)
+        layout.setSpacing(2)
+
+        # Labela imena i godine
+        self.name_label = QLabel(name)
+        self.name_label.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
+        self.name_label.setStyleSheet("color: #111827;")
+
+        self.year_label = QLabel(f"Godina rođenja: {birth_year}")
+        self.year_label.setFont(QFont("Inter", 10))
+        self.year_label.setStyleSheet("color: #6B7280;")
+
+        layout.addWidget(self.name_label)
+        layout.addWidget(self.year_label)
+
+        self.update_style()
+
+    def enterEvent(self, event):
+        self.hovered = True
+        self.update_style()
+
+    def leaveEvent(self, event):
+        self.hovered = False
+        self.update_style()
+
+    def set_selected(self, selected: bool):
+        self.selected = selected
+        self.update_style()
+
+    def update_style(self):
+        if self.hovered:
+            bg = "#0C81E4"  # Plava kao title bar
+            name_color = "white"
+            year_color = "white"
+        else:
+            bg = "white"
+            name_color = "#111827"
+            year_color = "#6B7280"
+
+        self.setStyleSheet(f"""
+            QFrame#PatientCard {{
+                background-color: {bg};
+                border-radius: 12px;
+                border: none;
+            }}
+        """)
+        self.name_label.setStyleSheet(f"color: {name_color}; background-color: transparent;")
+        self.year_label.setStyleSheet(f"color: {year_color}; background-color: transparent;")
 
 class MainWindow(QMainWindow):
     def __init__(self, db_manager: DatabaseManager):
@@ -87,6 +162,65 @@ class MainWindow(QMainWindow):
 
         content.addWidget(self.create_left_panel())
         content.addWidget(self.create_right_panel())
+        self.load_patients()
+
+    def load_patients(self):
+        self.patient_list.clear()
+        self.cards = []
+
+        patients = self.db_manager.get_all_patients()
+        for i, patient in enumerate(patients):
+            full_name = patient[1]
+            birthday = patient[2]
+            if birthday:
+                birth_year = str(birthday).split("-")[0]
+            else:
+                birth_year = "N/A"
+
+            card = PatientCard(full_name, birth_year)
+            item = QListWidgetItem()
+            item.setSizeHint(card.sizeHint())
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+
+            self.patient_list.addItem(item)
+            self.patient_list.setItemWidget(item, card)
+            self.cards.append(card)
+
+        #if self.cards:
+        #    self.select_patient(0)
+
+        self.patient_list.currentRowChanged.connect(self.select_patient)
+
+    def select_patient(self, index):
+        for i, card in enumerate(self.cards):
+            card.set_selected(i == index)
+
+        if 0 <= index < len(self.cards):
+            patient = self.db_manager.get_all_patients()[index]
+            self.update_patient_info(patient)
+
+    def update_patient_info(self, patient):
+        full_name = patient[1] or "-"
+        birth_date = patient[2] or "-"
+        address = patient[3] or "-"
+        gender = patient[4] or "-"
+        note = patient[5] or ""
+
+        try:
+            if hasattr(birth_date, 'strftime'):
+                birth_date_str = birth_date.strftime("%d.%m.%Y.")
+            else:
+                birth_date_str = birth_date
+        except:
+            birth_date_str = birth_date
+
+        self.label_name.setText(f"Pacijent: {full_name}")
+        self.label_birthday.setText(f"Datum rođenja: {birth_date_str}")
+        self.label_address.setText(f"Adresa: {address}")
+        self.label_gender.setText(f"Pol: {gender}")
+        self.note_edit.setPlainText(note)
+
+        self.history_list.clear()  # zasad prazno
 
     def create_title_bar(self):
         title_bar = QWidget()
@@ -193,7 +327,26 @@ class MainWindow(QMainWindow):
 
         # === Lista pacijenata ===
         self.patient_list = QListWidget()
-        self.patient_list.setStyleSheet("background-color: white; border-radius: 12px; padding: 6px;")
+        self.patient_list.setStyleSheet("""
+            QListWidget {
+                background-color: white;
+                border: none;
+                border-radius: 12px;
+                padding: 6px;
+            }
+            QListWidget::item {
+                background: transparent;
+                border: none;
+            }
+            QListWidget::item:selected {
+                background: transparent;
+            }
+            QListWidget::item:hover {
+                background: transparent;
+            }
+        """)
+        self.patient_list.setSpacing(8)
+        self.patient_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.apply_shadow(self.patient_list)
         layout.addWidget(self.patient_list)
 
@@ -223,17 +376,17 @@ class MainWindow(QMainWindow):
         grid.setVerticalSpacing(2)
         grid.setContentsMargins(0, 0, 0, 0)
 
-        label_name = QLabel("Pacijent: Marko Marković")
-        label_name.setStyleSheet("font-weight: bold;")
+        self.label_name = QLabel()
+        self.label_name.setStyleSheet("font-weight: bold;")
 
-        label_birthday = QLabel("Datum rođenja: 19.07.1978.")
-        label_address = QLabel("Adresa: Bulevar revolucije 1a")
-        label_gender = QLabel("Pol: Muški")
+        self.label_birthday = QLabel()
+        self.label_address = QLabel()
+        self.label_gender = QLabel()
 
-        grid.addWidget(label_name, 0, 0)
-        grid.addWidget(label_birthday, 1, 0)
-        grid.addWidget(label_address, 2, 0)
-        grid.addWidget(label_gender, 3, 0)
+        grid.addWidget(self.label_name, 0, 0)
+        grid.addWidget(self.label_birthday, 1, 0)
+        grid.addWidget(self.label_address, 2, 0)
+        grid.addWidget(self.label_gender, 3, 0)
 
         info_layout.addLayout(grid)
 
@@ -245,6 +398,43 @@ class MainWindow(QMainWindow):
         self.note_edit = QTextEdit()
         self.note_edit.setFixedHeight(200)
         self.note_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        #self.apply_shadow(self.note_edit)
+
+        self.note_edit.setStyleSheet("""
+            QTextEdit {
+                background-color: white;
+                border: 1px solid #ccc;
+                border-radius: 12px;
+                padding: 10px;
+                font-family: 'Inter';
+                font-size: 14px;
+                color: #111827;
+            }
+            QTextEdit:focus {
+                border: 1px solid #0C81E4;
+                outline: none;
+            }
+
+            QScrollBar:vertical {
+                background: transparent;
+                width: 6px;
+                margin: 2px 0 2px 0;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #D1D5DB;
+                min-height: 20px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #9CA3AF;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0;
+            }
+        """)
         info_layout.addWidget(self.note_edit)
 
         layout.addWidget(info_frame)
