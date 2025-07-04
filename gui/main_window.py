@@ -1,11 +1,85 @@
 import os
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QListWidget, QLineEdit, QTextEdit, QFrame, QGraphicsDropShadowEffect, QSizePolicy, QGridLayout, QListWidgetItem
+    QListWidget, QLineEdit, QTextEdit, QFrame, QGraphicsDropShadowEffect, QSizePolicy, QGridLayout, QListWidgetItem,
+    QMessageBox, QDialog
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPixmap, QFontDatabase, QFont, QIcon
 from database_manager import DatabaseManager
+from datetime import datetime
+from gui.add_patient_dialog import AddPatientDialog
+from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QRect
+
+class SuccessDialog(QDialog):
+    def __init__(self, message="Uspešno ste dodali pacijenta.", parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+            QLabel {
+                color: #111827;
+                font-size: 14px;
+                font-family: 'Inter';
+            }
+            QPushButton {
+                background-color: #22C55E;
+                color: white;
+                font-weight: bold;
+                padding: 8px 24px;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #16a34a;
+            }
+        """)
+        self.setFixedSize(300, 130)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 16)
+        layout.setSpacing(16)
+
+        self.label = QLabel(message)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.ok_btn = QPushButton("OK")
+        self.ok_btn.clicked.connect(self.accept)
+
+        layout.addWidget(self.label)
+        layout.addWidget(self.ok_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # === Primeni shadow efekat na OK dugme ===
+        self.apply_shadow(self.ok_btn)
+        self.slide_in_animation()
+
+    def apply_shadow(self, widget):
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(0, 0, 0, 63))
+        widget.setGraphicsEffect(shadow)
+
+    def slide_in_animation(self):
+        screen = self.screen().availableGeometry()
+        end_rect = self.geometry()
+
+        # Pozicioniraj dijalog pre animacije ispod vidljivog dela
+        start_x = (screen.width() - end_rect.width()) // 2
+        start_y = screen.height()
+        end_x = start_x
+        end_y = (screen.height() - end_rect.height()) // 2
+
+        self.setGeometry(start_x, start_y, end_rect.width(), end_rect.height())
+
+        self.animation = QPropertyAnimation(self, b"geometry")
+        self.animation.setDuration(350)
+        self.animation.setStartValue(QRect(start_x, start_y, end_rect.width(), end_rect.height()))
+        self.animation.setEndValue(QRect(end_x, end_y, end_rect.width(), end_rect.height()))
+        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.animation.start()
+
 
 class PatientCard(QFrame):
     def __init__(self, name: str, birth_year: str, selected: bool = False):
@@ -24,6 +98,7 @@ class PatientCard(QFrame):
 
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover)
+        self.setContentsMargins(0, 6, 0, 6)  # Gornji i donji razmak
 
         # Senka
         shadow = QGraphicsDropShadowEffect(self)
@@ -206,13 +281,17 @@ class MainWindow(QMainWindow):
         gender = patient[4] or "-"
         note = patient[5] or ""
 
+        birth_date_str = "-"
         try:
-            if hasattr(birth_date, 'strftime'):
+            if isinstance(birth_date, str):
+                dt = datetime.fromisoformat(birth_date)
+                birth_date_str = dt.strftime("%d.%m.%Y.")
+            elif hasattr(birth_date, 'strftime'):
                 birth_date_str = birth_date.strftime("%d.%m.%Y.")
             else:
-                birth_date_str = birth_date
+                birth_date_str = str(birth_date)
         except:
-            birth_date_str = birth_date
+            birth_date_str = str(birth_date)
 
         self.label_name.setText(f"Pacijent: {full_name}")
         self.label_birthday.setText(f"Datum rođenja: {birth_date_str}")
@@ -222,6 +301,42 @@ class MainWindow(QMainWindow):
 
         self.history_list.clear()  # zasad prazno
 
+    def on_add_patient(self):
+
+        dialog = AddPatientDialog(self)
+        if dialog.exec():  # ako je kliknuto "Sačuvaj"
+            data = dialog.get_data()
+
+            # Razdvajamo ime i prezime
+            name_parts = data["full_name"].strip().split(" ", 1)
+            name = name_parts[0]
+            last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+            # Čuvamo u bazu
+            self.db_manager.add_patient(
+                name=name,
+                last_name=last_name,
+                birthday=data["birthday"],
+                gender=data["gender"],
+                address=data["address"],
+                phone_number=None,
+                email=None,
+                note=data["note"]
+            )
+
+            self.load_patients()  # osvežimo prikaz
+
+            dialog = SuccessDialog(parent=self)
+            dialog.exec()
+
+    def filter_patients(self, text):
+        text = text.lower()
+        for i in range(self.patient_list.count()):
+            item = self.patient_list.item(i)
+            widget = self.patient_list.itemWidget(item)
+            if isinstance(widget, PatientCard):  # Dodaj sigurnosnu proveru
+                full_name = widget.name_label.text().lower()
+                item.setHidden(text not in full_name)
     def create_title_bar(self):
         title_bar = QWidget()
         title_bar.setFixedHeight(40)
@@ -316,12 +431,13 @@ class MainWindow(QMainWindow):
         icon_label.setPixmap(QPixmap("assets/icons/search.png").scaled(16, 16))
         icon_label.setStyleSheet("background-color: transparent;")
 
-        search_input = QLineEdit()
-        search_input.setPlaceholderText("Pretraži pacijente")
-        search_input.setStyleSheet("border: none; background-color: transparent; font-size: 14px;")
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Pretraži pacijente")
+        self.search_input.setStyleSheet("border: none; background-color: transparent; font-size: 14px;")
+        self.search_input.textChanged.connect(self.filter_patients)
 
         search_layout.addWidget(icon_label)
-        search_layout.addWidget(search_input)
+        search_layout.addWidget(self.search_input)
         self.apply_shadow(search_container)
         layout.addWidget(search_container)
 
@@ -355,6 +471,7 @@ class MainWindow(QMainWindow):
         add_button.setStyleSheet("background-color: #22C55E; color: white; font-weight: bold;")
         self.apply_shadow(add_button)
         layout.addWidget(add_button)
+        add_button.clicked.connect(self.on_add_patient)
 
         return panel
 
