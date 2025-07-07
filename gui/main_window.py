@@ -4,14 +4,175 @@ from PyQt6.QtWidgets import (
     QListWidget, QLineEdit, QTextEdit, QFrame, QGraphicsDropShadowEffect, QSizePolicy, QGridLayout, QListWidgetItem,
     QMessageBox, QDialog
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor, QPixmap, QFontDatabase, QFont, QIcon
 from database_manager import DatabaseManager
 from datetime import datetime
 from gui.add_patient_dialog import AddPatientDialog
+from gui.update_patient_dialog import UpdatePatientDialog
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QRect
 
-class SuccessDialog(QDialog):
+
+class EditPatientDialog(QDialog):
+    def __init__(self, message="Uspešno ste izmenili pacijenta.", parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+            QLabel {
+                color: #111827;
+                font-size: 14px;
+                font-family: 'Inter';
+            }
+            QPushButton {
+                background-color: #22C55E;
+                color: white;
+                font-weight: bold;
+                padding: 8px 24px;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #16a34a;
+            }
+        """)
+        self.setFixedSize(300, 130)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 16)
+        layout.setSpacing(16)
+
+        self.label = QLabel(message)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.ok_btn = QPushButton("OK")
+        self.ok_btn.clicked.connect(self.accept)
+
+        layout.addWidget(self.label)
+        layout.addWidget(self.ok_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # === Primeni shadow efekat na OK dugme ===
+        self.apply_shadow(self.ok_btn)
+        self.slide_in_animation()
+
+    def apply_shadow(self, widget):
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(0, 0, 0, 63))
+        widget.setGraphicsEffect(shadow)
+
+    def slide_in_animation(self):
+        screen = self.screen().availableGeometry()
+        end_rect = self.geometry()
+
+        # Pozicioniraj dijalog pre animacije ispod vidljivog dela
+        start_x = (screen.width() - end_rect.width()) // 2
+        start_y = screen.height()
+        end_x = start_x
+        end_y = (screen.height() - end_rect.height()) // 2
+
+        self.setGeometry(start_x, start_y, end_rect.width(), end_rect.height())
+
+        self.animation = QPropertyAnimation(self, b"geometry")
+        self.animation.setDuration(350)
+        self.animation.setStartValue(QRect(start_x, start_y, end_rect.width(), end_rect.height()))
+        self.animation.setEndValue(QRect(end_x, end_y, end_rect.width(), end_rect.height()))
+        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.animation.start()
+
+class ConfirmDeletePatientDialog(QDialog):
+    def __init__(self, message="Da li zaista želite da obrišete pacijenta?", parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setFixedSize(350, 150)
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+            QLabel {
+                color: #111827;
+                font-size: 14px;
+                font-family: 'Inter';
+            }
+            QPushButton {
+                padding: 8px 24px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton#yes_btn {
+                background-color: #EF4444;
+                color: white;
+            }
+            QPushButton#yes_btn:hover {
+                background-color: #dc2626;
+            }
+            QPushButton#no_btn {
+                background-color: #ffffff;
+                color: #111827;
+            }
+            QPushButton#no_btn:hover {
+                background-color: #d1d5db;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 16)
+        layout.setSpacing(16)
+
+        self.label = QLabel(message)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        btn_layout = QHBoxLayout()
+        self.yes_btn = QPushButton("Da")
+        self.no_btn = QPushButton("Ne")
+        self.yes_btn.setObjectName("yes_btn")
+        self.no_btn.setObjectName("no_btn")
+
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.yes_btn)
+        btn_layout.addWidget(self.no_btn)
+        btn_layout.addStretch()
+
+        layout.addWidget(self.label)
+        layout.addLayout(btn_layout)
+
+        self.apply_shadow(self.yes_btn)
+        self.apply_shadow(self.no_btn)
+
+        self.yes_btn.clicked.connect(self.accept)
+        self.no_btn.clicked.connect(self.reject)
+
+        self.slide_in_animation()
+
+    def apply_shadow(self, widget):
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(0, 0, 0, 63))
+        widget.setGraphicsEffect(shadow)
+
+    def slide_in_animation(self):
+        screen = self.screen().availableGeometry()
+        end_rect = self.geometry()
+
+        # Pozicioniraj dijalog pre animacije ispod vidljivog dela
+        start_x = (screen.width() - end_rect.width()) // 2
+        start_y = screen.height()
+        end_x = start_x
+        end_y = (screen.height() - end_rect.height()) // 2
+
+        self.setGeometry(start_x, start_y, end_rect.width(), end_rect.height())
+
+        self.animation = QPropertyAnimation(self, b"geometry")
+        self.animation.setDuration(350)
+        self.animation.setStartValue(QRect(start_x, start_y, end_rect.width(), end_rect.height()))
+        self.animation.setEndValue(QRect(end_x, end_y, end_rect.width(), end_rect.height()))
+        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.animation.start()
+class SuccessPatientDialog(QDialog):
     def __init__(self, message="Uspešno ste dodali pacijenta.", parent=None):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
@@ -139,8 +300,8 @@ class PatientCard(QFrame):
         self.update_style()
 
     def update_style(self):
-        if self.hovered:
-            bg = "#0C81E4"  # Plava kao title bar
+        if self.selected or self.hovered:
+            bg = "#0C81E4"  # Plava kao za hover
             name_color = "white"
             year_color = "white"
         else:
@@ -326,8 +487,66 @@ class MainWindow(QMainWindow):
 
             self.load_patients()  # osvežimo prikaz
 
-            dialog = SuccessDialog(parent=self)
+            dialog = SuccessPatientDialog(parent=self)
             dialog.exec()
+
+    def on_edit_patient(self):
+        current_row = self.patient_list.currentRow()
+        if current_row < 0:
+            return
+
+        all_patients = self.db_manager.get_all_patients()
+        selected_patient = all_patients[current_row]
+        patient_id = selected_patient[0]
+
+        patient_data = self.db_manager.get_patient(patient_id)
+        if not patient_data:
+            print("Greška: Pacijent nije pronađen.")
+            return
+
+        dialog = UpdatePatientDialog(self)
+        try:
+            dialog.set_data({
+                "full_name": patient_data[3],  # full_name
+                "birthday": patient_data[7],  # birthday
+                "gender": patient_data[6],  # gender
+                "address": patient_data[8],  # address
+                "note": patient_data[9],  # note
+            })
+        except IndexError as e:
+            print("Greška pri učitavanju podataka:", e)
+            return
+
+        if dialog.exec():
+            updated = dialog.get_data()
+            name_parts = updated["full_name"].strip().split(" ", 1)
+            name = name_parts[0]
+            last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+            self.db_manager.update_patient(
+                patient_id=patient_id,
+                name=name,
+                last_name=last_name,
+                birthday=updated["birthday"],
+                gender=updated["gender"],
+                address=updated["address"],
+                note=updated["note"]
+            )
+            self.load_patients()
+
+            dialog = EditPatientDialog(parent=self)
+            dialog.exec()
+
+    def on_delete_patient(self):
+        current_row = self.patient_list.currentRow()
+        if current_row < 0:
+            return  # ništa nije selektovano
+
+        dialog = ConfirmDeletePatientDialog(parent=self)
+        if dialog.exec():  # korisnik kliknuo "Da"
+            selected_patient = self.db_manager.get_all_patients()[current_row]
+            self.db_manager.delete_patient(selected_patient[0])
+            self.load_patients()
 
     def filter_patients(self, text):
         text = text.lower()
@@ -466,12 +685,65 @@ class MainWindow(QMainWindow):
         self.apply_shadow(self.patient_list)
         layout.addWidget(self.patient_list)
 
-        # === Dodaj pacijenta ===
-        add_button = QPushButton("Dodaj pacijenta")
-        add_button.setStyleSheet("background-color: #22C55E; color: white; font-weight: bold;")
-        self.apply_shadow(add_button)
-        layout.addWidget(add_button)
-        add_button.clicked.connect(self.on_add_patient)
+        # === Dugmad za pacijente ===
+        button_layout = QHBoxLayout()
+
+        # Dodaj pacijenta
+        btn_add_patient = QPushButton("Dodaj pacijenta")
+        btn_add_patient.setStyleSheet("""
+            QPushButton {
+                background-color: #22C55E;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 24px;
+            }
+            QPushButton:hover {
+                background-color: #16a34a;
+            }
+        """)
+        self.apply_shadow(btn_add_patient)
+        btn_add_patient.clicked.connect(self.on_add_patient)
+        button_layout.addWidget(btn_add_patient)
+
+        # Izmeni pacijenta
+        btn_edit_patient = QPushButton("Izmeni pacijenta")
+        btn_edit_patient.setStyleSheet("""
+            QPushButton {
+                background-color: #ffffff;
+                color: #111827;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 24px;
+            }
+            QPushButton:hover {
+                background-color: #e5e7eb;
+            }
+        """)
+        self.apply_shadow(btn_edit_patient)
+        btn_edit_patient.clicked.connect(self.on_edit_patient)  # Definiši metodu
+        button_layout.addWidget(btn_edit_patient)
+
+        # Obriši pacijenta
+        btn_delete_patient = QPushButton("Obriši pacijenta")
+        btn_delete_patient.setStyleSheet("""
+            QPushButton {
+                background-color: #EF4444;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 24px;
+            }
+            QPushButton:hover {
+                background-color: #dc2626;
+            }
+        """)
+        self.apply_shadow(btn_delete_patient)
+        btn_delete_patient.clicked.connect(self.on_delete_patient)  # Definiši metodu
+        button_layout.addWidget(btn_delete_patient)
+
+        # Dodaj layout u glavni layout
+        layout.addLayout(button_layout)
 
         return panel
 
@@ -513,6 +785,7 @@ class MainWindow(QMainWindow):
         info_layout.addWidget(note_label)
 
         self.note_edit = QTextEdit()
+        self.note_edit.setReadOnly(True)
         self.note_edit.setFixedHeight(200)
         self.note_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
@@ -576,20 +849,53 @@ class MainWindow(QMainWindow):
         button_layout = QHBoxLayout()
 
         btn_add_report = QPushButton("Dodaj izveštaj")
-        btn_add_report.setStyleSheet("background-color: #22C55E; color: white; font-weight: bold;")
+        btn_add_report.setStyleSheet("""
+            QPushButton {
+                background-color: #22C55E;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 24px;
+            }
+            QPushButton:hover {
+                background-color: #16a34a;
+            }
+        """)
         self.apply_shadow(btn_add_report)
 
-        btn_edit = QPushButton("Izmeni")
-        btn_edit.setStyleSheet("background-color: white; color: black; font-weight: bold;")
-        self.apply_shadow(btn_edit)
+        btn_edit_report = QPushButton("Izmeni izveštaj")
+        btn_edit_report.setStyleSheet("""
+            QPushButton {
+                background-color: #ffffff;
+                color: #111827;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 24px;
+            }
+            QPushButton:hover {
+                background-color: #e5e7eb;
+            }
+        """)
+        self.apply_shadow(btn_edit_report)
 
-        btn_delete = QPushButton("Obriši")
-        btn_delete.setStyleSheet("background-color: #EF4444; color: white; font-weight: bold;")
-        self.apply_shadow(btn_delete)
+        btn_delete_report = QPushButton("Obriši izveštaj")
+        btn_delete_report.setStyleSheet("""
+            QPushButton {
+                background-color: #EF4444;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 24px;
+            }
+            QPushButton:hover {
+                background-color: #dc2626;
+            }
+        """)
+        self.apply_shadow(btn_delete_report)
 
         button_layout.addWidget(btn_add_report)
-        button_layout.addWidget(btn_edit)
-        button_layout.addWidget(btn_delete)
+        button_layout.addWidget(btn_edit_report)
+        button_layout.addWidget(btn_delete_report)
 
         layout.addLayout(button_layout)
         return panel
