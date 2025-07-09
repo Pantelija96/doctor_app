@@ -1,16 +1,193 @@
 import os
+from functools import partial
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QLineEdit, QTextEdit, QFrame, QGraphicsDropShadowEffect, QSizePolicy, QGridLayout, QListWidgetItem,
-    QMessageBox, QDialog
+    QDialog, QAbstractItemView
 )
-from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QColor, QPixmap, QFontDatabase, QFont, QIcon
+from PyQt6.QtCore import Qt, QDate, pyqtSignal
+from PyQt6.QtGui import QColor, QPixmap, QFontDatabase, QFont, QIcon, QFontMetrics
 from database_manager import DatabaseManager
 from datetime import datetime
 from gui.add_patient_dialog import AddPatientDialog
-from gui.update_patient_dialog import UpdatePatientDialog
+from gui.add_report_dialog import AddReportDialog
+from gui.update_report_dialog import UpdateReportDialog
+from gui.update_patient_dialog import UpdatePatientDialog, WarningDialog
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QRect
+
+# Prozori za appointmente!
+
+class ConfirmDeleteAppointmentDialog(QDialog):
+    def __init__(self, message="Da li zaista želite da obrišete izveštaj?", parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setFixedSize(350, 150)
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+            QLabel {
+                color: #111827;
+                font-size: 14px;
+                font-family: 'Inter';
+            }
+            QPushButton {
+                padding: 8px 24px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton#yes_btn {
+                background-color: #EF4444;
+                color: white;
+            }
+            QPushButton#yes_btn:hover {
+                background-color: #dc2626;
+            }
+            QPushButton#no_btn {
+                background-color: #ffffff;
+                color: #111827;
+            }
+            QPushButton#no_btn:hover {
+                background-color: #d1d5db;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 16)
+        layout.setSpacing(16)
+
+        self.label = QLabel(message)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        btn_layout = QHBoxLayout()
+        self.yes_btn = QPushButton("Da")
+        self.no_btn = QPushButton("Ne")
+        self.yes_btn.setObjectName("yes_btn")
+        self.no_btn.setObjectName("no_btn")
+
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.yes_btn)
+        btn_layout.addWidget(self.no_btn)
+        btn_layout.addStretch()
+
+        layout.addWidget(self.label)
+        layout.addLayout(btn_layout)
+
+        self.apply_shadow(self.yes_btn)
+        self.apply_shadow(self.no_btn)
+
+        self.yes_btn.clicked.connect(self.accept)
+        self.no_btn.clicked.connect(self.reject)
+
+        self.slide_in_animation()
+
+    def apply_shadow(self, widget):
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(0, 0, 0, 63))
+        widget.setGraphicsEffect(shadow)
+
+    def slide_in_animation(self):
+        screen = self.screen().availableGeometry()
+        end_rect = self.geometry()
+
+        # Pozicioniraj dijalog pre animacije ispod vidljivog dela
+        start_x = (screen.width() - end_rect.width()) // 2
+        start_y = screen.height()
+        end_x = start_x
+        end_y = (screen.height() - end_rect.height()) // 2
+
+        self.setGeometry(start_x, start_y, end_rect.width(), end_rect.height())
+
+        self.animation = QPropertyAnimation(self, b"geometry")
+        self.animation.setDuration(350)
+        self.animation.setStartValue(QRect(start_x, start_y, end_rect.width(), end_rect.height()))
+        self.animation.setEndValue(QRect(end_x, end_y, end_rect.width(), end_rect.height()))
+        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.animation.start()
+
+class AppointmentCard(QFrame):
+    clicked = pyqtSignal()
+    def __init__(self, appointment_id, date: str, diagnose: str):
+        super().__init__()
+        self.setObjectName("AppointmentCard")
+        self.setFixedHeight(80)
+        self.selected = False
+        self.appointment_id = appointment_id
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover)
+
+        self.hovered = False
+
+        self.shadow = QGraphicsDropShadowEffect(self)
+        self.shadow.setBlurRadius(16)
+        self.shadow.setOffset(0, 4)
+        self.shadow.setColor(QColor(0, 0, 0, 40))
+        self.setGraphicsEffect(self.shadow)
+
+        # Layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setSpacing(4)
+
+        self.date_label = QLabel(f"Datum: {date}")
+        self.date_label.setFont(QFont("Inter", 10, QFont.Weight.Bold))
+
+        self.diagnose_label = QLabel(diagnose)
+        self.diagnose_label.setFont(QFont("Inter", 10))
+        self.diagnose_label.setWordWrap(False)
+        self.diagnose_label.setStyleSheet("color: #374151;")
+        self.diagnose_label.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+        self.diagnose_label.setMaximumHeight(24)
+        metrics = QFontMetrics(self.diagnose_label.font())
+        elided = metrics.elidedText(diagnose, Qt.TextElideMode.ElideRight, 280)  # širina u pikselima
+        self.diagnose_label.setText(elided)
+
+        layout.addWidget(self.date_label)
+        layout.addWidget(self.diagnose_label)
+
+        self.update_style()
+
+    def enterEvent(self, event):
+        self.hovered = True
+        self.update_style()
+
+    def leaveEvent(self, event):
+        self.hovered = False
+        self.update_style()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()  # obavesti da je kliknuto
+            print("Kliknuto na karticu!")
+            super().mousePressEvent(event)  # pozovi default ponašanje
+
+    def set_selected(self, selected: bool):
+        self.selected = selected
+        self.update_style()
+
+    def update_style(self):
+        if self.selected or self.hovered:
+            bg_color = "#0C81E4"
+            text_color = "white"
+        else:
+            bg_color = "white"
+            text_color = "#111827"
+
+        self.setStyleSheet(f"""
+            QFrame#AppointmentCard {{
+                background-color: {bg_color};
+                border-radius: 12px;
+                border: none;
+            }}
+        """)
+        self.date_label.setStyleSheet(f"color: {text_color}; background-color: transparent;")
+        self.diagnose_label.setStyleSheet(f"color: {text_color}; background-color: transparent;")
+
+
+# Prozori za pacijente!
 
 
 class EditPatientDialog(QDialog):
@@ -172,6 +349,8 @@ class ConfirmDeletePatientDialog(QDialog):
         self.animation.setEndValue(QRect(end_x, end_y, end_rect.width(), end_rect.height()))
         self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.animation.start()
+
+
 class SuccessPatientDialog(QDialog):
     def __init__(self, message="Uspešno ste dodali pacijenta.", parent=None):
         super().__init__(parent)
@@ -319,6 +498,8 @@ class PatientCard(QFrame):
         self.name_label.setStyleSheet(f"color: {name_color}; background-color: transparent;")
         self.year_label.setStyleSheet(f"color: {year_color}; background-color: transparent;")
 
+# Kraj prozora za pacijente!
+
 class MainWindow(QMainWindow):
     def __init__(self, db_manager: DatabaseManager):
         super().__init__()
@@ -400,6 +581,8 @@ class MainWindow(QMainWindow):
         content.addWidget(self.create_right_panel())
         self.load_patients()
 
+    # Funkcije vezane za pacijente!
+
     def load_patients(self):
         self.patient_list.clear()
         self.cards = []
@@ -433,7 +616,9 @@ class MainWindow(QMainWindow):
 
         if 0 <= index < len(self.cards):
             patient = self.db_manager.get_all_patients()[index]
+            self.selected_patient_id = patient[0]
             self.update_patient_info(patient)
+            self.load_appointment_history(patient[0])  # Dodaj ovo
 
     def update_patient_info(self, patient):
         full_name = patient[1] or "-"
@@ -556,6 +741,112 @@ class MainWindow(QMainWindow):
             if isinstance(widget, PatientCard):  # Dodaj sigurnosnu proveru
                 full_name = widget.name_label.text().lower()
                 item.setHidden(text not in full_name)
+
+    # Funkcije vezane za appointmente!
+
+    def on_edit_appointment(self):
+        selected_index = self.history_list.currentRow()
+        if selected_index < 0:
+            warning = WarningDialog("Molimo Vas da prvo selektujete izveštaj.", self)
+            warning.exec()
+            return
+
+        item = self.history_list.item(selected_index)
+        widget = self.history_list.itemWidget(item)
+
+        if not isinstance(widget, AppointmentCard) or not hasattr(widget, "appointment_id"):
+            warning = WarningDialog("Ne mogu da pronađem izabrani izveštaj.", self)
+            warning.exec()
+            return
+
+        appointment_id = widget.appointment_id
+        date_str = widget.date_label.text().replace("Datum: ", "").strip()
+        diagnose_text = widget.diagnose_label.text()
+
+        dialog = UpdateReportDialog(
+            appointment_id=appointment_id,
+            patient_id=self.selected_patient_id,
+            db_manager=self.db_manager,
+            refresh_callback=self.load_appointment_history,
+            parent=self
+        )
+
+        dialog.set_data({
+            "date": date_str,
+            "diagnose_text": diagnose_text
+        })
+
+        dialog.exec()
+
+    def on_delete_appointment(self):
+        selected_row = self.history_list.currentRow()
+        if selected_row < 0:
+            warning = WarningDialog("Molimo Vas da prvo selektujete izveštaj.", self)
+            warning.exec()
+            return
+
+        item = self.history_list.item(selected_row)
+        widget = self.history_list.itemWidget(item)
+
+        if not isinstance(widget, AppointmentCard):
+            warning = WarningDialog("Ne mogu da pronađem izabrani izveštaj.", self)
+            warning.exec()
+            return
+
+        appointment_id = widget.appointment_id
+
+        dialog = ConfirmDeleteAppointmentDialog(
+            "Da li ste sigurni da želite da obrišete izveštaj?", parent=self
+        )
+        if dialog.exec():
+            success = self.db_manager.delete_appointment(appointment_id)
+            if success:
+                self.load_appointment_history(self.selected_patient_id)
+
+    def on_add_report(self):
+        current_row = self.patient_list.currentRow()
+        if current_row < 0:
+            return  # nijedan pacijent nije selektovan
+
+        patient = self.db_manager.get_all_patients()[current_row]
+        patient_id = patient[0]
+
+        dialog = AddReportDialog(
+            patient_id=patient_id,
+            db_manager=self.db_manager,
+            refresh_callback=self.load_appointment_history,  # 🟢 povezujemo osvežavanje
+            parent=self
+        )
+        dialog.exec()
+
+    def select_appointment_card(self, selected_card):
+        for card in self.appointment_cards:
+            card.set_selected(card == selected_card)
+
+    def load_appointment_history(self, patient_id):
+        self.history_list.clear()
+        self.appointment_cards = []
+
+        self.appointment_ids = []  # čuvamo ID-jeve redom
+
+        appointments = self.db_manager.get_appointments_by_patient_id(patient_id)
+        for appointment in appointments:
+            appointment_id, date, diagnose = appointment
+            self.appointment_ids.append(appointment_id)
+            card = AppointmentCard(appointment_id, date, diagnose)
+
+            # poveži klik
+            card.clicked.connect(partial(self.select_appointment_card, card))
+            self.appointment_cards.append(card)
+
+            item = QListWidgetItem()
+            item.setSizeHint(card.sizeHint())
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.history_list.addItem(item)
+            self.history_list.setItemWidget(item, card)
+
+    # Custom title bar!
+
     def create_title_bar(self):
         title_bar = QWidget()
         title_bar.setFixedHeight(40)
@@ -567,7 +858,7 @@ class MainWindow(QMainWindow):
 
         # === LOGO ===
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio))
+        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(36, 36, Qt.AspectRatioMode.KeepAspectRatio))
         layout.addWidget(logo, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         # === NASLOV ===
@@ -662,6 +953,8 @@ class MainWindow(QMainWindow):
 
         # === Lista pacijenata ===
         self.patient_list = QListWidget()
+        self.patient_list.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.patient_list.verticalScrollBar().setSingleStep(10)
         self.patient_list.setStyleSheet("""
             QListWidget {
                 background-color: white;
@@ -679,10 +972,30 @@ class MainWindow(QMainWindow):
             QListWidget::item:hover {
                 background: transparent;
             }
+            
+            QScrollBar:vertical {
+                background: transparent;
+                width: 6px;
+                margin: 2px 0 2px 0;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #D1D5DB;
+                min-height: 20px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #9CA3AF;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0;
+            }
         """)
         self.patient_list.setSpacing(8)
         self.patient_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.apply_shadow(self.patient_list)
+
         layout.addWidget(self.patient_list)
 
         # === Dugmad za pacijente ===
@@ -832,14 +1145,46 @@ class MainWindow(QMainWindow):
         # === Istorija pregleda ===
         history_frame = QFrame()
         history_layout = QVBoxLayout(history_frame)
-        history_layout.setContentsMargins(12, 12, 12, 12)
+        history_layout.setContentsMargins(4, 12, 4, 12)
         history_frame.setStyleSheet("background-color: #ffffff; border-radius: 12px;")
         self.apply_shadow(history_frame)
 
         history_label = QLabel("Istorija pregleda")
-        history_label.setStyleSheet("font-weight: bold;")
+        history_label.setStyleSheet("font-weight: bold;"
+                                    "padding-left: 12px")
 
         self.history_list = QListWidget()
+        self.history_list.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.history_list.verticalScrollBar().setSingleStep(10)
+        self.history_list.setSpacing(14)
+        self.history_list.setStyleSheet("""
+            QListWidget {
+                background: transparent;
+                border: none;
+            }
+            QListWidget::item {
+                background: transparent;
+                margin-bottom: 12px;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 6px;
+                margin: 2px 0 2px 0;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #D1D5DB;
+                min-height: 20px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #9CA3AF;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0;
+            }
+        """)
 
         history_layout.addWidget(history_label)
         history_layout.addWidget(self.history_list)
@@ -849,6 +1194,7 @@ class MainWindow(QMainWindow):
         button_layout = QHBoxLayout()
 
         btn_add_report = QPushButton("Dodaj izveštaj")
+        btn_add_report.clicked.connect(self.on_add_report)
         btn_add_report.setStyleSheet("""
             QPushButton {
                 background-color: #22C55E;
@@ -864,6 +1210,7 @@ class MainWindow(QMainWindow):
         self.apply_shadow(btn_add_report)
 
         btn_edit_report = QPushButton("Izmeni izveštaj")
+        btn_edit_report.clicked.connect(self.on_edit_appointment)
         btn_edit_report.setStyleSheet("""
             QPushButton {
                 background-color: #ffffff;
@@ -879,6 +1226,7 @@ class MainWindow(QMainWindow):
         self.apply_shadow(btn_edit_report)
 
         btn_delete_report = QPushButton("Obriši izveštaj")
+        btn_delete_report.clicked.connect(self.on_delete_appointment)
         btn_delete_report.setStyleSheet("""
             QPushButton {
                 background-color: #EF4444;

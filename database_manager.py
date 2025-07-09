@@ -222,3 +222,16 @@ class DatabaseManager:
         except sqlite3.Error as e:
             log_error(f"Get all appointments failed: {e}")
             return []
+
+    def get_appointments_by_patient_id(self, patient_id):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, date, diagnose_text FROM appointment WHERE id_patient = ? ORDER BY date DESC",
+                    (patient_id,)
+                )
+                return cursor.fetchall()
+        except sqlite3.Error as e:
+            log_error(f"Get appointments by patient ID failed: {e}")
+            return []
