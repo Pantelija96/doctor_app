@@ -1,149 +1,14 @@
 from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve
 from PyQt6.QtGui import QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
-    QVBoxLayout, QDialog, QWidget
-
-class WarningDialog(QDialog):
-    def __init__(self, message="Niste popunili sva potrebna polja!", parent=None):
-        super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: white;
-            }
-            QLabel {
-                color: #DC2626;
-                font-size: 14px;
-                font-family: 'Inter';
-            }
-            QPushButton {
-                background-color: #DC2626;
-                color: white;
-                font-weight: bold;
-                padding: 8px 24px;
-                border-radius: 8px;
-            }
-            QPushButton:hover {
-                background-color: #b91c1c;
-            }
-        """)
-        self.setFixedSize(500, 200)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 16)
-        layout.setSpacing(16)
-
-        self.label = QLabel(message)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.ok_btn = QPushButton("OK")
-        self.ok_btn.clicked.connect(self.accept)
-
-        layout.addWidget(self.label)
-        layout.addWidget(self.ok_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self.apply_shadow(self.ok_btn)
-        self.slide_in_animation()
-
-    def apply_shadow(self, widget):
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(20)
-        shadow.setOffset(0, 4)
-        shadow.setColor(QColor(0, 0, 0, 63))
-        widget.setGraphicsEffect(shadow)
-
-    def slide_in_animation(self):
-        screen = self.screen().availableGeometry()
-        end_rect = self.geometry()
-
-        # Pozicioniraj dijalog pre animacije ispod vidljivog dela
-        start_x = (screen.width() - end_rect.width()) // 2
-        start_y = screen.height()
-        end_x = start_x
-        end_y = (screen.height() - end_rect.height()) // 2
-
-        self.setGeometry(start_x, start_y, end_rect.width(), end_rect.height())
-
-        self.animation = QPropertyAnimation(self, b"geometry")
-        self.animation.setDuration(350)
-        self.animation.setStartValue(QRect(start_x, start_y, end_rect.width(), end_rect.height()))
-        self.animation.setEndValue(QRect(end_x, end_y, end_rect.width(), end_rect.height()))
-        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self.animation.start()
-
-
-class SuccessDialog(QDialog):
-    def __init__(self, message="Uspešno ste dodali izvestaj!", parent=None):
-        super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: white;
-            }
-            QLabel {
-                color: #111827;
-                font-size: 14px;
-                font-family: 'Inter';
-            }
-            QPushButton {
-                background-color: #22C55E;
-                color: white;
-                font-weight: bold;
-                padding: 8px 24px;
-                border-radius: 8px;
-            }
-            QPushButton:hover {
-                background-color: #16a34a;
-            }
-        """)
-        self.setFixedSize(300, 130)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 16)
-        layout.setSpacing(16)
-
-        self.label = QLabel(message)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.ok_btn = QPushButton("OK")
-        self.ok_btn.clicked.connect(self.accept)
-
-        layout.addWidget(self.label)
-        layout.addWidget(self.ok_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # === Primeni shadow efekat na OK dugme ===
-        self.apply_shadow(self.ok_btn)
-        self.slide_in_animation()
-
-    def apply_shadow(self, widget):
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(20)
-        shadow.setOffset(0, 4)
-        shadow.setColor(QColor(0, 0, 0, 63))
-        widget.setGraphicsEffect(shadow)
-
-    def slide_in_animation(self):
-        screen = self.screen().availableGeometry()
-        end_rect = self.geometry()
-
-        # Pozicioniraj dijalog pre animacije ispod vidljivog dela
-        start_x = (screen.width() - end_rect.width()) // 2
-        start_y = screen.height()
-        end_x = start_x
-        end_y = (screen.height() - end_rect.height()) // 2
-
-        self.setGeometry(start_x, start_y, end_rect.width(), end_rect.height())
-
-        self.animation = QPropertyAnimation(self, b"geometry")
-        self.animation.setDuration(350)
-        self.animation.setStartValue(QRect(start_x, start_y, end_rect.width(), end_rect.height()))
-        self.animation.setEndValue(QRect(end_x, end_y, end_rect.width(), end_rect.height()))
-        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self.animation.start()
+    QVBoxLayout, QDialog, QWidget, QMessageBox
+import os
+from speech_processor import SpeechProcessor
 
 class AddReportDialog(QDialog):
     def __init__(self, patient_id, db_manager, refresh_callback=None, parent=None):
         super().__init__(parent)
+        print("AddReportDialog initialized")  # Debug
         self.patient_id = patient_id
         self.db_manager = db_manager
         self.refresh_callback = refresh_callback
@@ -152,7 +17,13 @@ class AddReportDialog(QDialog):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: white;")
 
-        # === Glavni layout ===
+        # Initialize SpeechProcessor as None; will be loaded on first recording
+        self.speech_processor = None
+        self.audio_dir = os.path.join(os.getenv('APPDATA') or os.path.expanduser('~/AppData/Roaming'), 'DoctorApp', 'data', 'audio')
+        self.is_recording = False
+        self.audio_path = None
+
+        # Main layout
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -163,7 +34,7 @@ class AddReportDialog(QDialog):
         content_layout.setContentsMargins(24, 24, 24, 24)
         content_layout.setSpacing(16)
 
-        # === Datum pregleda ===
+        # Date input
         self.date_input = QDateEdit()
         self.date_input.setCalendarPopup(True)
         self.date_input.setDisplayFormat("dd.MM.yyyy.")
@@ -179,7 +50,7 @@ class AddReportDialog(QDialog):
         content_layout.addWidget(QLabel("Datum pregleda"))
         content_layout.addWidget(self.date_input)
 
-        # === Dijagnoza tekst ===
+        # Diagnosis input
         self.diagnose_input = QTextEdit()
         self.diagnose_input.setPlaceholderText("Unesite dijagnozu...")
         self.diagnose_input.setStyleSheet("""
@@ -196,9 +67,10 @@ class AddReportDialog(QDialog):
         content_layout.addWidget(QLabel("Dijagnoza / Simptomi"))
         content_layout.addWidget(self.diagnose_input)
 
-        # === Započni snimanje ===
+        # Record button
         self.record_btn = QPushButton("Započni snimanje")
-        self.record_btn.setIcon(QIcon("assets/icons/zapocni_snimanje_ikonica.png"))
+        record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+        self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
         self.record_btn.setIconSize(QSize(18, 18))
         self.record_btn.setStyleSheet("""
             QPushButton {
@@ -213,10 +85,11 @@ class AddReportDialog(QDialog):
             }
         """)
         self.record_btn.setFixedHeight(40)
+        self.record_btn.clicked.connect(self.toggle_recording)
         self.apply_shadow(self.record_btn)
         content_layout.addWidget(self.record_btn)
 
-        # === Donja dugmad ===
+        # Bottom buttons
         btn_layout = QHBoxLayout()
         self.save_btn = QPushButton("Sačuvaj")
         self.save_btn.clicked.connect(self.save_report)
@@ -270,33 +143,72 @@ class AddReportDialog(QDialog):
         content_layout.addLayout(btn_layout)
         main_layout.addLayout(content_layout)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        screen = self.screen().availableGeometry()
+        size = self.geometry()
+        self.move((screen.width() - size.width()) // 2, (screen.height() - size.height()) // 2)
+
+    def toggle_recording(self):
+        if not self.speech_processor:
+            try:
+                self.speech_processor = SpeechProcessor(self.audio_dir)
+                self.speech_processor.transcription_completed.connect(self.handle_transcription)
+            except Exception as e:
+                QMessageBox.critical(self, "Greška", f"Greška pri inicijalizaciji snimanja: {str(e)}")
+                self.speech_processor = None
+                return
+        if not self.is_recording:
+            if self.speech_processor and self.speech_processor.start_recording():
+                self.is_recording = True
+                self.record_btn.setText("Zaustavi snimanje")
+                stop_icon_path = "assets/icons/zaustavi_snimanje_ikonica.png"
+                self.record_btn.setIcon(QIcon(stop_icon_path if os.path.exists(stop_icon_path) else ""))
+        else:
+            if self.speech_processor:
+                audio_path, text = self.speech_processor.stop_recording()
+                self.is_recording = False
+                self.record_btn.setText("Započni snimanje")
+                record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+                self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
+                if audio_path:
+                    self.audio_path = audio_path
+
+    def handle_transcription(self, audio_path, text):
+        if audio_path:
+            self.audio_path = audio_path
+            current_text = self.diagnose_input.toPlainText().strip()
+            if current_text:
+                self.diagnose_input.setPlainText(current_text + "\n" + text)
+            else:
+                self.diagnose_input.setPlainText(text)
+        else:
+            QMessageBox.critical(self, "Greška", text)
+
     def save_report(self):
         diagnose_text = self.diagnose_input.toPlainText().strip()
         date_str = self.date_input.date().toString("yyyy-MM-dd")
 
         if not diagnose_text:
-            warning = WarningDialog("Polje za dijagnozu ne sme biti prazno.", self)
-            warning.exec()
+            QMessageBox.critical(self, "Greška", "Polje za dijagnozu ne sme biti prazno.")
             return
 
-        appointment_id = self.db_manager.add_appointment(
-            id_patient=self.patient_id,
-            date=date_str,
-            diagnose_text=diagnose_text,
-            diagnose_sound=None  # kada dodaješ snimanje, ovde dodaš
-        )
-
-        if appointment_id:
-            # 🔄 Osvežavanje istorije pregleda
-            if hasattr(self, "refresh_callback") and self.refresh_callback:
-                self.refresh_callback(self.patient_id)
-
-            dialog = SuccessDialog("Uspešno ste dodali izveštaj!", self)
-            dialog.exec()
-            self.accept()
-        else:
-            warning = WarningDialog("Došlo je do greške pri dodavanju izveštaja.", self)
-            warning.exec()
+        try:
+            appointment_id = self.db_manager.add_appointment(
+                id_patient=self.patient_id,
+                date=date_str,
+                diagnose_text=diagnose_text,
+                diagnose_sound=self.audio_path
+            )
+            if appointment_id:
+                if hasattr(self, "refresh_callback") and self.refresh_callback:
+                    self.refresh_callback(self.patient_id)
+                QMessageBox.information(self, "Uspeh", "Uspešno ste dodali izveštaj!")
+                self.accept()
+            else:
+                QMessageBox.critical(self, "Greška", "Došlo je do greške pri dodavanju izveštaja.")
+        except Exception as e:
+            QMessageBox.critical(self, "Greška", f"Greška pri čuvanju izveštaja: {str(e)}")
 
     def create_title_bar(self):
         title_bar = QWidget()
@@ -306,7 +218,8 @@ class AddReportDialog(QDialog):
         layout.setContentsMargins(10, 0, 10, 0)
 
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(24, 24))
+        logo_path = "assets/icons/logo.png"
+        logo.setPixmap(QPixmap(logo_path if os.path.exists(logo_path) else "").scaled(24, 24))
         layout.addWidget(logo)
 
         title = QLabel("Dodaj izveštaj")
@@ -314,7 +227,8 @@ class AddReportDialog(QDialog):
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
 
         close_btn = QPushButton()
-        close_btn.setIcon(QIcon("assets/icons/close.png"))
+        close_icon_path = "assets/icons/close.png"
+        close_btn.setIcon(QIcon(close_icon_path if os.path.exists(close_icon_path) else ""))
         close_btn.setStyleSheet("border: none;")
         close_btn.setFixedSize(24, 24)
         close_btn.clicked.connect(self.close)
