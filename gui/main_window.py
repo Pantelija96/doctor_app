@@ -818,6 +818,8 @@ class MainWindow(QMainWindow):
     def on_add_report(self):
         current_row = self.patient_list.currentRow()
         if current_row < 0:
+            warning = WarningDialog("Molimo Vas da prvo selektujete pacijenta.", self)
+            warning.exec()
             return  # nijedan pacijent nije selektovan
 
         patient = self.db_manager.get_all_patients()[current_row]
@@ -878,7 +880,7 @@ class MainWindow(QMainWindow):
 
         # === LOGO ===
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(36, 36, Qt.AspectRatioMode.KeepAspectRatio))
+        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(74, 68, Qt.AspectRatioMode.KeepAspectRatio))
         layout.addWidget(logo, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         # === NASLOV ===

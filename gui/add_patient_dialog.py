@@ -242,7 +242,7 @@ class AddPatientDialog(QDialog):
         layout.setSpacing(0)
 
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio))
+        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(68, 62, Qt.AspectRatioMode.KeepAspectRatio))
         layout.addWidget(logo, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         title = QLabel("Dodaj pacijenta")
