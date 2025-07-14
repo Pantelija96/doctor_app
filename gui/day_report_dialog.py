@@ -1,13 +1,12 @@
 from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve
 from PyQt6.QtGui import QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
-    QVBoxLayout, QDialog, QWidget
+    QVBoxLayout, QDialog, QWidget, QLineEdit, QListWidget, QAbstractItemView
 import os
 from speech_processor import SpeechProcessor
 
-
 class WarningDialog(QDialog):
-    def __init__(self, message="Niste popunili sva potrebna polja!", parent=None):
+    def __init__(self, message="Greška!", parent=None):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setStyleSheet("""
@@ -76,9 +75,8 @@ class WarningDialog(QDialog):
         self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.animation.start()
 
-
 class SuccessDialog(QDialog):
-    def __init__(self, message="Uspešno ste izmenili izvestaj!", parent=None):
+    def __init__(self, message="Uspešno ste odštampali dan.", parent=None):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setStyleSheet("""
@@ -148,15 +146,11 @@ class SuccessDialog(QDialog):
         self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.animation.start()
 
-
-class UpdateReportDialog(QDialog):
-    def __init__(self, appointment_id, patient_id, db_manager, refresh_callback=None, parent=None):
+class DayReportDialog(QDialog):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.appointment_id = appointment_id
-        self.patient_id = patient_id
-        self.db_manager = db_manager
-        self.refresh_callback = refresh_callback
-        self.setWindowTitle("Izmeni izveštaj")
+        print("DayReportDialog initialized")  # Debug
+        self.setWindowTitle("Pregled dana")
         self.resize(500, 550)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: white;")
@@ -168,55 +162,68 @@ class UpdateReportDialog(QDialog):
             }
         """)
 
-        # Initialize SpeechProcessor with updated audio directory
-        appdata_path = os.getenv('APPDATA') or os.path.expanduser('~/AppData/Roaming')
-        audio_dir = os.path.join(appdata_path, 'DoctorApp', 'data', 'audio')
-        try:
-            self.speech_processor = SpeechProcessor(audio_dir)
-        except Exception as e:
-            warning = WarningDialog(f"Greška pri inicijalizaciji snimanja: {str(e)}", self)
-            warning.exec( )
-            self.speech_processor = None
-        self.is_recording = False
-        self.audio_path = None
-
-        # === Glavni layout ===
+        # Main layout
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
         main_layout.addWidget(self.create_title_bar())
 
+        # Centralni deo (biće proširen kasnije)
         content_layout = QVBoxLayout()
+        content_widget = QWidget()
+        content_widget.setLayout(content_layout)
         content_layout.setContentsMargins(24, 24, 24, 24)
         content_layout.setSpacing(16)
 
-        # === Datum pregleda ===
-        self.date_input = QDateEdit()
-        self.date_input.setCalendarPopup(True)
-        self.date_input.setDisplayFormat("dd.MM.yyyy.")
-        self.date_input.setDate(QDate.currentDate())
-        self.date_input.setFixedHeight(36)
-        self.date_input.setStyleSheet(""" QDateEdit { border: 1px solid #ccc; background-color: white; padding: 6px; border-radius: 10px; } QDateEdit::drop-down { subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border-left: 1px solid #ccc; } QDateEdit::down-arrow { image: url(assets/icons/down-arrow.png); width: 12px; height: 12px; } """)
-        self.apply_shadow(self.date_input)
+        # === PRETRAGA ===
+        search_container = QWidget()
+        search_layout = QHBoxLayout(search_container)
+        search_layout.setContentsMargins(12, 4, 12, 4)
+        search_layout.setSpacing(8)
+        search_container.setStyleSheet("background-color: #f3f4f6; border-radius: 18px;")
+        search_container.setFixedHeight(40)
 
-        calendar = self.date_input.calendarWidget()
-        calendar.setStyleSheet(
-            """ QCalendarWidget QToolButton#qt_calendar_prevmonth, QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(assets/icons/left-arrow.png); width: 24px; height: 24px; icon-size: 12px; border-radius: 12px; } QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(assets/icons/right-arrow.png); } QCalendarWidget QToolButton { color: black; } """)
+        icon_label = QLabel()
+        icon_label.setFixedSize(16, 16)
+        icon_path = "assets/icons/search.png"
+        icon_label.setPixmap(QPixmap(icon_path if os.path.exists(icon_path) else "").scaled(16, 16))
+        icon_label.setStyleSheet("background-color: transparent;")
 
-        content_layout.addWidget(QLabel("Datum pregleda"))
-        content_layout.addWidget(self.date_input)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Pretražuj po danima")
+        self.search_input.setStyleSheet("border: none; background-color: transparent; font-size: 14px;")
+        #self.search_input.textChanged.connect(self.filter_patients)  # ova funkcija je dole
 
-        # === Dijagnoza tekst ===
-        self.diagnose_input = QTextEdit()
-        self.diagnose_input.setPlaceholderText("Unesite dijagnozu...")
-        self.diagnose_input.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #ccc;
-                border-radius: 12px;
-                padding: 8px;
+        search_layout.addWidget(icon_label)
+        search_layout.addWidget(self.search_input)
+        self.apply_shadow(search_container)
+
+        # Dodaj pretragu u content layout
+        content_layout.addWidget(search_container)
+
+        # === Lista pacijenata ===
+        self.patient_list = QListWidget()
+        self.patient_list.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.patient_list.verticalScrollBar().setSingleStep(10)
+        self.patient_list.setStyleSheet("""
+            QListWidget {
                 background-color: white;
+                border: none;
+                border-radius: 12px;
+                padding: 6px;
             }
+            QListWidget::item {
+                background: transparent;
+                border: none;
+            }
+            QListWidget::item:selected {
+                background: transparent;
+            }
+            QListWidget::item:hover {
+                background: transparent;
+            }
+
             QScrollBar:vertical {
                 background: transparent;
                 width: 6px;
@@ -236,55 +243,19 @@ class UpdateReportDialog(QDialog):
                 height: 0;
             }
         """)
-        self.diagnose_input.setMinimumHeight(200)
-        self.apply_shadow(self.diagnose_input)
+        self.patient_list.setSpacing(8)
+        self.patient_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.apply_shadow(self.patient_list)
 
-        content_layout.addWidget(QLabel("Dijagnoza / Simptomi"))
-        content_layout.addWidget(self.diagnose_input)
+        # Dodaj u content layout
+        content_layout.addWidget(self.patient_list)
 
-        # Record button
-        self.record_btn = QPushButton("Započni snimanje")
-        record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
-        self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
-        self.record_btn.setIconSize(QSize(18, 18))
-        self.record_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #0C81E4;
-                        color: white;
-                        font-weight: bold;
-                        border-radius: 10px;
-                        padding: 10px;
-                    }
-                    QPushButton:hover {
-                        background-color: #0967b2;
-                    }
-                """)
-        self.record_btn.setFixedHeight(40)
-        self.record_btn.clicked.connect(self.toggle_recording)
-        self.apply_shadow(self.record_btn)
-        content_layout.addWidget(self.record_btn)
+        main_layout.addWidget(content_widget, stretch=1)  # <- srednji deo će se širiti
 
-        # Connect transcription signal
-        if self.speech_processor:
-            self.speech_processor.transcription_completed.connect(self.handle_transcription)
-
-        # === Donja dugmad ===
+        # Donja dugmad
         btn_layout = QHBoxLayout()
-        self.save_btn = QPushButton("Izmeni")
-        self.save_btn.clicked.connect(self.update_report)
-        self.save_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #22C55E;
-                color: white;
-                font-weight: bold;
-                padding: 8px 20px;
-                border-radius: 24px;
-            }
-            QPushButton:hover {
-                background-color: #16a34a;
-            }
-        """)
-        self.apply_shadow(self.save_btn)
+        btn_layout.setContentsMargins(24, 16, 24, 24)
+        btn_layout.setSpacing(16)
 
         self.print_btn = QPushButton("Štampaj")
         self.print_btn.setStyleSheet("""
@@ -315,81 +286,12 @@ class UpdateReportDialog(QDialog):
         self.cancel_btn.clicked.connect(self.reject)
         self.apply_shadow(self.cancel_btn)
 
-        btn_layout.addWidget(self.save_btn)
         btn_layout.addWidget(self.print_btn)
         btn_layout.addWidget(self.cancel_btn)
 
-        content_layout.addLayout(btn_layout)
-        main_layout.addLayout(content_layout)
-
-    def set_data(self, data: dict):
-        self.date_input.setDate(QDate.fromString(data["date"], "yyyy-MM-dd"))
-        self.diagnose_input.setPlainText(data["diagnose_text"])
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        screen = self.screen().availableGeometry()
-        size = self.geometry()
-        self.move((screen.width() - size.width()) // 2, (screen.height() - size.height()) // 2)
-
-    def toggle_recording(self):
-        if not self.speech_processor:
-            warning = WarningDialog("Snimanje nije dostupno.", self)
-            warning.exec()
-            return
-        if not self.is_recording:
-            if self.speech_processor.start_recording():
-                self.is_recording = True
-                self.record_btn.setText("Zaustavi snimanje")
-                stop_icon_path = "assets/icons/zaustavi_snimanje_ikonica.png"
-                self.record_btn.setIcon(QIcon(stop_icon_path if os.path.exists(stop_icon_path) else ""))
-        else:
-            audio_path, text = self.speech_processor.stop_recording()
-            self.is_recording = False
-            self.record_btn.setText("Započni snimanje")
-            record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
-            self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
-            if audio_path:
-                self.audio_path = audio_path
-
-    def handle_transcription(self, audio_path, text):
-        if audio_path:
-            self.audio_path = audio_path
-            current_text = self.diagnose_input.toPlainText().strip()
-            if current_text:
-                self.diagnose_input.setPlainText(current_text + "\n" + text)
-            else:
-                self.diagnose_input.setPlainText(text)
-        else:
-            warning = WarningDialog(text, self)
-            warning.exec()
-
-    def update_report(self):
-        diagnose_text = self.diagnose_input.toPlainText().strip()
-        date_str = self.date_input.date().toString("yyyy-MM-dd")
-
-        if not diagnose_text:
-            warning = WarningDialog("Polje za dijagnozu ne sme biti prazno.", self)
-            warning.exec()
-            return
-
-        success = self.db_manager.update_appointment(
-            appointment_id=self.appointment_id,
-            id_patient=self.patient_id,
-            date=date_str,
-            diagnose_text=diagnose_text,
-            diagnose_sound=None
-        )
-
-        if success:
-            dialog = SuccessDialog("Uspešno ste izmenili izveštaj!", self)
-            dialog.exec()
-            if self.refresh_callback:
-                self.refresh_callback(self.patient_id)
-            self.accept()
-        else:
-            warning = WarningDialog("Došlo je do greške pri izmeni izveštaja.", self)
-            warning.exec()
+        btn_widget = QWidget()
+        btn_widget.setLayout(btn_layout)
+        main_layout.addWidget(btn_widget)
 
     def create_title_bar(self):
         title_bar = QWidget()
@@ -401,15 +303,17 @@ class UpdateReportDialog(QDialog):
         layout.setContentsMargins(10, 0, 10, 0)
 
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(36, 36))
+        logo_path = "assets/icons/logo.png"
+        logo.setPixmap(QPixmap(logo_path if os.path.exists(logo_path) else "").scaled(24, 24))
         layout.addWidget(logo)
 
-        title = QLabel("Izmeni izveštaj")
+        title = QLabel("Pretraga po danima")
         title.setStyleSheet("color: white; font-weight: bold; font-size: 16px;")
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
 
         close_btn = QPushButton()
-        close_btn.setIcon(QIcon("assets/icons/close.png"))
+        close_icon_path = "assets/icons/close.png"
+        close_btn.setIcon(QIcon(close_icon_path if os.path.exists(close_icon_path) else ""))
         close_btn.setStyleSheet("border: none;")
         close_btn.setFixedSize(24, 24)
         close_btn.clicked.connect(self.close)

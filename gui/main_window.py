@@ -11,6 +11,7 @@ from database_manager import DatabaseManager
 from datetime import datetime
 from gui.add_patient_dialog import AddPatientDialog
 from gui.add_report_dialog import AddReportDialog
+from gui.day_report_dialog import DayReportDialog
 from gui.update_report_dialog import UpdateReportDialog
 from gui.update_patient_dialog import UpdatePatientDialog, WarningDialog
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QRect
@@ -26,6 +27,8 @@ class ConfirmDeleteAppointmentDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
             }
             QLabel {
                 color: #111827;
@@ -116,6 +119,7 @@ class AppointmentCard(QFrame):
         self.setFixedHeight(80)
         self.selected = False
         self.appointment_id = appointment_id
+        self.full_diagnose = diagnose
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover)
 
@@ -197,6 +201,8 @@ class EditPatientDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
             }
             QLabel {
                 color: #111827;
@@ -268,6 +274,8 @@ class ConfirmDeletePatientDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
             }
             QLabel {
                 color: #111827;
@@ -358,6 +366,8 @@ class SuccessPatientDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
             }
             QLabel {
                 color: #111827;
@@ -678,6 +688,8 @@ class MainWindow(QMainWindow):
     def on_edit_patient(self):
         current_row = self.patient_list.currentRow()
         if current_row < 0:
+            warning = WarningDialog("Molimo Vas da prvo selektujete pacijenta.", self)
+            warning.exec()
             return
 
         all_patients = self.db_manager.get_all_patients()
@@ -761,7 +773,7 @@ class MainWindow(QMainWindow):
 
         appointment_id = widget.appointment_id
         date_str = widget.date_label.text().replace("Datum: ", "").strip()
-        diagnose_text = widget.diagnose_label.text()
+        diagnose_text = widget.full_diagnose
 
         dialog = UpdateReportDialog(
             appointment_id=appointment_id,
@@ -834,6 +846,7 @@ class MainWindow(QMainWindow):
             appointment_id, date, diagnose = appointment
             self.appointment_ids.append(appointment_id)
             card = AppointmentCard(appointment_id, date, diagnose)
+            card.full_diagnose = diagnose
 
             # poveži klik
             card.clicked.connect(partial(self.select_appointment_card, card))
@@ -844,6 +857,13 @@ class MainWindow(QMainWindow):
             item.setFlags(Qt.ItemFlag.ItemIsEnabled)
             self.history_list.addItem(item)
             self.history_list.setItemWidget(item, card)
+
+    # Dugme za day report!
+
+    def on_day_report(self):
+        dialog = DayReportDialog(self)
+        dialog.exec()
+
 
     # Custom title bar!
 
@@ -929,7 +949,7 @@ class MainWindow(QMainWindow):
         panel = QWidget()
         layout = QVBoxLayout(panel)
 
-        # === Pretraga ===
+        #=== Pretraga ===
         search_container = QWidget()
         search_layout = QHBoxLayout(search_container)
         search_layout.setContentsMargins(12, 4, 12, 4)
@@ -1241,9 +1261,27 @@ class MainWindow(QMainWindow):
         """)
         self.apply_shadow(btn_delete_report)
 
+        btn_day_report = QPushButton("Pregled dana")
+        btn_day_report.clicked.connect(self.on_day_report)
+        btn_day_report.setStyleSheet("""
+                    QPushButton {
+                        background-color: #ffffff;
+                        color: #111827;
+                        font-weight: bold;
+                        padding: 8px 16px;
+                        border-radius: 24px;
+                    }
+                    QPushButton:hover {
+                        background-color: #e5e7eb;
+                    }
+                """)
+        self.apply_shadow(btn_day_report)
+
         button_layout.addWidget(btn_add_report)
         button_layout.addWidget(btn_edit_report)
         button_layout.addWidget(btn_delete_report)
+        button_layout.addWidget(btn_day_report)
+
 
         layout.addLayout(button_layout)
         return panel
