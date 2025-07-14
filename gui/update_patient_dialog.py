@@ -16,6 +16,8 @@ class WarningDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
             }
             QLabel {
                 color: #DC2626;
@@ -83,8 +85,15 @@ class UpdatePatientDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Izmeni pacijenta")
         self.resize(800, 450)
-        self.setStyleSheet("background-color: white;")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet("background-color: white;")
+        self.setStyleSheet("""
+            QDialog {
+                background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
+            }
+        """)
 
         # === Glavni layout: title bar + sadržaj ===
         main_layout = QVBoxLayout(self)
@@ -238,7 +247,9 @@ class UpdatePatientDialog(QDialog):
     def create_title_bar(self):
         title_bar = QWidget()
         title_bar.setFixedHeight(40)
-        title_bar.setStyleSheet("background-color: #0C81E4;")
+        title_bar.setStyleSheet("background-color: #0C81E4;"
+                                "border-top-left-radius: 12px;"
+                                "border-top-right-radius: 12px;")
 
         layout = QGridLayout(title_bar)
         layout.setContentsMargins(10, 0, 10, 0)

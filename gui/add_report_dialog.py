@@ -12,6 +12,8 @@ class WarningDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
             }
             QLabel {
                 color: #DC2626;
@@ -74,12 +76,14 @@ class WarningDialog(QDialog):
         self.animation.start()
 
 class SuccessDialog(QDialog):
-    def __init__(self, message="Uspešno ste dodali izvestaj!", parent=None):
+    def __init__(self, message="Uspešno ste dodali izveštaj!", parent=None):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
             }
             QLabel {
                 color: #111827;
@@ -153,6 +157,13 @@ class AddReportDialog(QDialog):
         self.resize(500, 550)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: white;")
+        self.setStyleSheet("""
+            QDialog {
+                background-color: white;
+                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border-radius: 12px;
+            }
+        """)
 
         # Initialize SpeechProcessor with updated audio directory
         appdata_path = os.getenv('APPDATA') or os.path.expanduser('~/AppData/Roaming')
@@ -360,7 +371,9 @@ class AddReportDialog(QDialog):
     def create_title_bar(self):
         title_bar = QWidget()
         title_bar.setFixedHeight(40)
-        title_bar.setStyleSheet("background-color: #0C81E4;")
+        title_bar.setStyleSheet("background-color: #0C81E4;"
+                                "border-top-left-radius: 12px;"
+                                "border-top-right-radius: 12px;")
         layout = QHBoxLayout(title_bar)
         layout.setContentsMargins(10, 0, 10, 0)
 
