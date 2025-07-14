@@ -2,6 +2,8 @@ from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCur
 from PyQt6.QtGui import QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
     QVBoxLayout, QDialog, QWidget
+import os
+from speech_processor import SpeechProcessor
 
 
 class WarningDialog(QDialog):
@@ -155,6 +157,18 @@ class UpdateReportDialog(QDialog):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: white;")
 
+        # Initialize SpeechProcessor with updated audio directory
+        appdata_path = os.getenv('APPDATA') or os.path.expanduser('~/AppData/Roaming')
+        audio_dir = os.path.join(appdata_path, 'DoctorApp', 'data', 'audio')
+        try:
+            self.speech_processor = SpeechProcessor(audio_dir)
+        except Exception as e:
+            warning = WarningDialog(f"Greška pri inicijalizaciji snimanja: {str(e)}", self)
+            warning.exec( )
+            self.speech_processor = None
+        self.is_recording = False
+        self.audio_path = None
+
         # === Glavni layout ===
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -199,25 +213,31 @@ class UpdateReportDialog(QDialog):
         content_layout.addWidget(QLabel("Dijagnoza / Simptomi"))
         content_layout.addWidget(self.diagnose_input)
 
-        # === Započni snimanje ===
+        # Record button
         self.record_btn = QPushButton("Započni snimanje")
-        self.record_btn.setIcon(QIcon("assets/icons/zapocni_snimanje_ikonica.png"))
+        record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+        self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
         self.record_btn.setIconSize(QSize(18, 18))
         self.record_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #0C81E4;
-                color: white;
-                font-weight: bold;
-                border-radius: 10px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #0967b2;
-            }
-        """)
+                    QPushButton {
+                        background-color: #0C81E4;
+                        color: white;
+                        font-weight: bold;
+                        border-radius: 10px;
+                        padding: 10px;
+                    }
+                    QPushButton:hover {
+                        background-color: #0967b2;
+                    }
+                """)
         self.record_btn.setFixedHeight(40)
+        self.record_btn.clicked.connect(self.toggle_recording)
         self.apply_shadow(self.record_btn)
         content_layout.addWidget(self.record_btn)
+
+        # Connect transcription signal
+        if self.speech_processor:
+            self.speech_processor.transcription_completed.connect(self.handle_transcription)
 
         # === Donja dugmad ===
         btn_layout = QHBoxLayout()
@@ -276,6 +296,44 @@ class UpdateReportDialog(QDialog):
     def set_data(self, data: dict):
         self.date_input.setDate(QDate.fromString(data["date"], "yyyy-MM-dd"))
         self.diagnose_input.setPlainText(data["diagnose_text"])
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        screen = self.screen().availableGeometry()
+        size = self.geometry()
+        self.move((screen.width() - size.width()) // 2, (screen.height() - size.height()) // 2)
+
+    def toggle_recording(self):
+        if not self.speech_processor:
+            warning = WarningDialog("Snimanje nije dostupno.", self)
+            warning.exec()
+            return
+        if not self.is_recording:
+            if self.speech_processor.start_recording():
+                self.is_recording = True
+                self.record_btn.setText("Zaustavi snimanje")
+                stop_icon_path = "assets/icons/zaustavi_snimanje_ikonica.png"
+                self.record_btn.setIcon(QIcon(stop_icon_path if os.path.exists(stop_icon_path) else ""))
+        else:
+            audio_path, text = self.speech_processor.stop_recording()
+            self.is_recording = False
+            self.record_btn.setText("Započni snimanje")
+            record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+            self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
+            if audio_path:
+                self.audio_path = audio_path
+
+    def handle_transcription(self, audio_path, text):
+        if audio_path:
+            self.audio_path = audio_path
+            current_text = self.diagnose_input.toPlainText().strip()
+            if current_text:
+                self.diagnose_input.setPlainText(current_text + "\n" + text)
+            else:
+                self.diagnose_input.setPlainText(text)
+        else:
+            warning = WarningDialog(text, self)
+            warning.exec()
 
     def update_report(self):
         diagnose_text = self.diagnose_input.toPlainText().strip()
