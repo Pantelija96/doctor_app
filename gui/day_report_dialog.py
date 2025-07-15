@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve
 from PyQt6.QtGui import QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
-    QVBoxLayout, QDialog, QWidget, QLineEdit, QListWidget, QAbstractItemView
+    QVBoxLayout, QDialog, QWidget, QLineEdit, QListWidget, QAbstractItemView, QSizePolicy
 import os
 from speech_processor import SpeechProcessor
 
@@ -176,31 +176,65 @@ class DayReportDialog(QDialog):
         content_layout.setContentsMargins(24, 24, 24, 24)
         content_layout.setSpacing(16)
 
-        # === PRETRAGA ===
-        search_container = QWidget()
-        search_layout = QHBoxLayout(search_container)
-        search_layout.setContentsMargins(12, 4, 12, 4)
-        search_layout.setSpacing(8)
-        search_container.setStyleSheet("background-color: #f3f4f6; border-radius: 18px;")
-        search_container.setFixedHeight(40)
+        # === Izbor datuma pregleda ===
+        date_layout = QHBoxLayout()
+        date_container = QWidget()
+        date_container.setLayout(date_layout)
+        date_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
-        icon_label = QLabel()
-        icon_label.setFixedSize(16, 16)
-        icon_path = "assets/icons/search.png"
-        icon_label.setPixmap(QPixmap(icon_path if os.path.exists(icon_path) else "").scaled(16, 16))
-        icon_label.setStyleSheet("background-color: transparent;")
+        date_label = QLabel("Odaberi datum pregleda:")
+        date_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #111827;")
 
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Pretražuj po danima")
-        self.search_input.setStyleSheet("border: none; background-color: transparent; font-size: 14px;")
-        #self.search_input.textChanged.connect(self.filter_patients)  # ova funkcija je dole
+        self.date_input = QDateEdit()
+        self.date_input.setDisplayFormat("dd.MM.yyyy.")
+        self.date_input.setCalendarPopup(True)
+        self.date_input.setDate(QDate.currentDate())
+        self.date_input.setFixedHeight(36)
+        self.date_input.setMinimumWidth(250)
 
-        search_layout.addWidget(icon_label)
-        search_layout.addWidget(self.search_input)
-        self.apply_shadow(search_container)
+        self.apply_shadow(self.date_input)
 
-        # Dodaj pretragu u content layout
-        content_layout.addWidget(search_container)
+        self.date_input.setStyleSheet("""
+            QDateEdit {
+                border: 1px solid #ccc;
+                background-color: white;
+                padding: 6px;
+                border-radius: 10px;
+            }
+            QDateEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #ccc;
+            }
+            QDateEdit::down-arrow {
+                image: url(assets/icons/down-arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+        """)
+
+        calendar = self.date_input.calendarWidget()
+        calendar.setStyleSheet("""
+            QCalendarWidget QToolButton#qt_calendar_prevmonth,
+            QCalendarWidget QToolButton#qt_calendar_nextmonth {
+                qproperty-icon: url(assets/icons/left-arrow.png);
+                width: 24px;
+                height: 24px;
+                icon-size: 12px;
+                border-radius: 12px;
+            }
+            QCalendarWidget QToolButton#qt_calendar_nextmonth {
+                qproperty-icon: url(assets/icons/right-arrow.png);
+            }
+            QCalendarWidget QToolButton {
+                color: black;
+            }
+        """)
+
+        date_layout.addWidget(date_label)
+        date_layout.addWidget(self.date_input)
+        content_layout.addWidget(date_container)
 
         # === Lista pacijenata ===
         self.patient_list = QListWidget()
@@ -304,7 +338,7 @@ class DayReportDialog(QDialog):
 
         logo = QLabel()
         logo_path = "assets/icons/logo.png"
-        logo.setPixmap(QPixmap(logo_path if os.path.exists(logo_path) else "").scaled(24, 24))
+        logo.setPixmap(QPixmap(logo_path if os.path.exists(logo_path) else "").scaled(36, 36))
         layout.addWidget(logo)
 
         title = QLabel("Pretraga po danima")

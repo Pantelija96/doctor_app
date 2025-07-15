@@ -818,6 +818,8 @@ class MainWindow(QMainWindow):
     def on_add_report(self):
         current_row = self.patient_list.currentRow()
         if current_row < 0:
+            warning = WarningDialog("Molimo Vas da prvo selektujete pacijenta.", self)
+            warning.exec()
             return  # nijedan pacijent nije selektovan
 
         patient = self.db_manager.get_all_patients()[current_row]
@@ -878,7 +880,7 @@ class MainWindow(QMainWindow):
 
         # === LOGO ===
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(36, 36, Qt.AspectRatioMode.KeepAspectRatio))
+        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(74, 68, Qt.AspectRatioMode.KeepAspectRatio))
         layout.addWidget(logo, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         # === NASLOV ===
@@ -1265,14 +1267,14 @@ class MainWindow(QMainWindow):
         btn_day_report.clicked.connect(self.on_day_report)
         btn_day_report.setStyleSheet("""
                     QPushButton {
-                        background-color: #ffffff;
-                        color: #111827;
+                        background-color: #0C81E4;
+                        color: #ffffff;
                         font-weight: bold;
                         padding: 8px 16px;
                         border-radius: 24px;
                     }
                     QPushButton:hover {
-                        background-color: #e5e7eb;
+                        background-color: #3696ea;
                     }
                 """)
         self.apply_shadow(btn_day_report)

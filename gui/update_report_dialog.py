@@ -341,7 +341,7 @@ class UpdateReportDialog(QDialog):
             if self.speech_processor.start_recording():
                 self.is_recording = True
                 self.record_btn.setText("Zaustavi snimanje")
-                stop_icon_path = "assets/icons/zaustavi_snimanje_ikonica.png"
+                stop_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
                 self.record_btn.setIcon(QIcon(stop_icon_path if os.path.exists(stop_icon_path) else ""))
         else:
             audio_path, text = self.speech_processor.stop_recording()
@@ -401,7 +401,7 @@ class UpdateReportDialog(QDialog):
         layout.setContentsMargins(10, 0, 10, 0)
 
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(36, 36))
+        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(68, 62))
         layout.addWidget(logo)
 
         title = QLabel("Izmeni izveštaj")
