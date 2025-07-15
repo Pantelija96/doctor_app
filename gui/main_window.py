@@ -1267,14 +1267,14 @@ class MainWindow(QMainWindow):
         btn_day_report.clicked.connect(self.on_day_report)
         btn_day_report.setStyleSheet("""
                     QPushButton {
-                        background-color: #ffffff;
-                        color: #111827;
+                        background-color: #0C81E4;
+                        color: #ffffff;
                         font-weight: bold;
                         padding: 8px 16px;
                         border-radius: 24px;
                     }
                     QPushButton:hover {
-                        background-color: #e5e7eb;
+                        background-color: #3696ea;
                     }
                 """)
         self.apply_shadow(btn_day_report)
