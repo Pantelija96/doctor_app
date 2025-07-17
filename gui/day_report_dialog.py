@@ -3,7 +3,7 @@ from PyQt6.QtGui import QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
     QVBoxLayout, QDialog, QWidget, QLineEdit, QListWidget, QAbstractItemView, QSizePolicy
 import os
-from speech_processor import SpeechProcessor
+from database_manager import DatabaseManager
 
 class WarningDialog(QDialog):
     def __init__(self, message="Greška!", parent=None):

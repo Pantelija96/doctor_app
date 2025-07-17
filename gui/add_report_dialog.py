@@ -1,8 +1,14 @@
-from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve
-from PyQt6.QtGui import QColor, QIcon, QPixmap
+import base64
+import tempfile
+import webbrowser
+
+from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve, QUrl
+from PyQt6.QtGui import QColor, QIcon, QPixmap, QDesktopServices
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
     QVBoxLayout, QDialog, QWidget
 import os
+
+from report_generator import generate_appointment_pdf
 from speech_processor import SpeechProcessor
 
 class WarningDialog(QDialog):
@@ -266,6 +272,7 @@ class AddReportDialog(QDialog):
         self.apply_shadow(self.save_btn)
 
         self.print_btn = QPushButton("Štampaj")
+        self.print_btn.clicked.connect(self.print_pdf)
         self.print_btn.setStyleSheet("""
             QPushButton {
                 background-color: white;
@@ -415,3 +422,39 @@ class AddReportDialog(QDialog):
         shadow.setOffset(0, 4)
         shadow.setColor(QColor(0, 0, 0, 63))
         widget.setGraphicsEffect(shadow)
+
+    def print_pdf(self):
+        try:
+            # Get current inputs
+            diagnose_text = self.diagnose_input.toPlainText( ).strip( )
+            if not diagnose_text:
+                warning = WarningDialog("Unesite dijagnozu pre štampe.", self)
+                warning.exec( )
+                return
+
+            patient = self.db_manager.get_patient(self.patient_id)
+            if not patient:
+                warning = WarningDialog("Podaci o pacijentu nisu pronađeni.", self)
+                warning.exec( )
+                return
+
+            patient_data = {
+                "full_name": f"{patient[1]} {patient[2]}",  # name + last_name
+                "birthday": patient[7],  # birthday
+                "address": patient[8] or ""  # address
+            }
+
+            logo_path = "assets/icons/pdfLogo.png"
+            pdf_base64 = generate_appointment_pdf(patient_data, diagnose_text, logo_path = logo_path)
+
+            # Decode and save as temp PDF
+            pdf_data = base64.b64decode(pdf_base64)
+            with tempfile.NamedTemporaryFile(delete = False, suffix = ".pdf") as f:
+                f.write(pdf_data)
+                temp_path = f.name
+
+            # Open in default web browser
+            webbrowser.open(f"file:///{temp_path.replace(os.sep, '/')}")
+        except Exception as e:
+            warning = WarningDialog(f"Greška pri štampi: {str(e)}", self)
+            warning.exec( )

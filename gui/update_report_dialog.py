@@ -1,9 +1,13 @@
-from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve
-from PyQt6.QtGui import QColor, QIcon, QPixmap
+import base64
+import tempfile
+
+from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve, QUrl
+from PyQt6.QtGui import QColor, QIcon, QPixmap, QDesktopServices
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
     QVBoxLayout, QDialog, QWidget
 import os
 from speech_processor import SpeechProcessor
+from report_generator import generate_appointment_pdf
 
 
 class WarningDialog(QDialog):
@@ -287,6 +291,7 @@ class UpdateReportDialog(QDialog):
         self.apply_shadow(self.save_btn)
 
         self.print_btn = QPushButton("Štampaj")
+        self.print_btn.clicked.connect(self.print_pdf)
         self.print_btn.setStyleSheet("""
             QPushButton {
                 background-color: white;
@@ -436,3 +441,41 @@ class UpdateReportDialog(QDialog):
         shadow.setOffset(0, 4)
         shadow.setColor(QColor(0, 0, 0, 63))
         widget.setGraphicsEffect(shadow)
+
+    import tempfile
+
+    def print_pdf(self):
+        try:
+            # 1. Fetch patient from DB
+            row = self.db_manager.get_patient(self.patient_id)
+            if not row:
+                raise ValueError("Pacijent nije pronađen u bazi.")
+
+            patient = {
+                "full_name": row[1] + " " + row[2],  # name + last_name
+                "birthday": row[7],  # birthday
+                "address": row[8] or ""  # address (nullable)
+            }
+
+            # 2. Get diagnosis text from input
+            diagnose_text = self.diagnose_input.toPlainText( ).strip( )
+            if not diagnose_text:
+                raise ValueError("Polje za dijagnozu ne sme biti prazno.")
+
+            # 3. Generate base64 PDF
+            base64_pdf = generate_appointment_pdf(patient, diagnose_text, logo_path = "assets/icons/pdfLogo.png")
+
+            # 4. Save as temporary PDF file
+            pdf_data = base64.b64decode(base64_pdf)
+            temp_dir = tempfile.gettempdir( )
+            file_path = os.path.join(temp_dir, "izvestaj.pdf")
+
+            with open(file_path, "wb") as f:
+                f.write(pdf_data)
+
+            # 5. Open in default browser (or PDF viewer)
+            QDesktopServices.openUrl(QUrl.fromLocalFile(file_path))
+
+        except Exception as e:
+            warning = WarningDialog(f"Greška pri generisanju PDF-a: {str(e)}", self)
+            warning.exec( )

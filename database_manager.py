@@ -235,3 +235,28 @@ class DatabaseManager:
         except sqlite3.Error as e:
             log_error(f"Get appointments by patient ID failed: {e}")
             return []
+
+    def get_appointments_by_date(self, target_date):
+        """
+        Returns all appointments for a specific date with patient details.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor( )
+                cursor.execute("""
+                               SELECT appointment.id,
+                                      appointment.date,
+                                      appointment.diagnose_text,
+                                      patient.id,
+                                      patient.full_name,
+                                      patient.birthday,
+                                      patient.address
+                               FROM appointment
+                                        JOIN patient ON appointment.id_patient = patient.id
+                               WHERE DATE (appointment.date) = DATE (?)
+                               ORDER BY appointment.date ASC
+                               """, (target_date,))
+                return cursor.fetchall( )
+        except sqlite3.Error as e:
+            log_error(f"Get appointments by date failed: {e}")
+            return []
