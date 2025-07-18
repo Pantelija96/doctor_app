@@ -161,7 +161,6 @@ class DayReportDialog(QDialog):
             QDialog {
                 background-color: white;
                 border: 1px solid #6B7280;  /* tamnija siva granica */
-                border-radius: 12px;
                 border-style: solid;
             }
         """)
@@ -368,9 +367,7 @@ class DayReportDialog(QDialog):
     def create_title_bar(self):
         title_bar = QWidget()
         title_bar.setFixedHeight(40)
-        title_bar.setStyleSheet("background-color: #0C81E4;"
-                                "border-top-left-radius: 12px;"
-                                "border-top-right-radius: 12px;")
+        title_bar.setStyleSheet("background-color: #0C81E4;")
         layout = QHBoxLayout(title_bar)
         layout.setContentsMargins(10, 0, 10, 0)
 
