@@ -282,3 +282,25 @@ class DatabaseManager:
         except sqlite3.Error as e:
             log_error(f"Get patients by appointment date failed: {e}")
             return []
+
+    def get_patients_by_appointment_date_print_report(self, date):
+        try:
+            # Osiguraj da je u formatu 'YYYY-MM-DD'
+            if isinstance(date, (datetime.date, datetime.datetime)):
+                date_str = date.strftime('%Y-%m-%d')
+            else:
+                date_str = str(date)
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                       SELECT p.id, p.full_name, p.birthday, p.address, p.gender, p.note, p.phone_number
+                       FROM appointment a
+                       JOIN patient p ON a.id_patient = p.id
+                       WHERE DATE(a.date) = ?
+                       ORDER BY a.date ASC
+                   """, (date_str,))
+                return cursor.fetchall()
+        except sqlite3.Error as e:
+            log_error(f"Get patients by appointment date failed: {e}")
+            return []
