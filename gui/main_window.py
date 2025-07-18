@@ -1,4 +1,5 @@
 import os
+import sys
 from functools import partial
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -16,6 +17,12 @@ from gui.patient_card import PatientCard
 from gui.update_report_dialog import UpdateReportDialog
 from gui.update_patient_dialog import UpdatePatientDialog, WarningDialog
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QRect
+
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.abspath(relative_path)
 
 # Prozori za appointmente!
 
@@ -442,7 +449,8 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)  # Skini sistemski title bar
 
         # Učitaj font
-        font_path = os.path.join("assets", "Inter-VariableFont_opsz,wght.ttf")
+        font_path = resource_path("assets/Inter-VariableFont_opsz,wght.ttf")
+        #font_path = os.path.join("assets", "Inter-VariableFont_opsz,wght.ttf")
         font_id = QFontDatabase.addApplicationFont(font_path)
         if font_id == -1:
             print("Greška: Font nije učitan!")

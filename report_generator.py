@@ -151,12 +151,11 @@ def generate_day_report_pdf(patient_list, logo_path=None):
 
     # === Patient Table ===
     # Prepare table data: Order, Full Name, Phone Number
-    table_data = [["Redni broj", "Ime i prezime", "Telefon"]]
+    table_data = [["Redni broj", "Ime i prezime"]]
     for patient in patient_list:
         order = patient.get("order", "")
         full_name = patient.get("full_name", "")
-        phone_number = patient.get("phone_number", "")
-        table_data.append([str(order), full_name, phone_number])
+        table_data.append([str(order), full_name])
 
     # Create table
     table = Table(table_data, colWidths=[60, 300, 150])
