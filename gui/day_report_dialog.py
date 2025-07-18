@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout,
 import os
 from database_manager import DatabaseManager
 from gui.patient_card import PatientCard
+from report_generator import generate_day_report_pdf
 
 
 class WarningDialog(QDialog):
@@ -156,12 +157,12 @@ class DayReportDialog(QDialog):
         self.setWindowTitle("Pregled dana")
         self.resize(500, 550)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        self.setStyleSheet("background-color: white;")
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
-                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border: 1px solid #6B7280;  /* tamnija siva granica */
                 border-radius: 12px;
+                border-style: solid;
             }
         """)
 
@@ -245,10 +246,10 @@ class DayReportDialog(QDialog):
         self.patient_list.verticalScrollBar().setSingleStep(10)
         self.patient_list.setStyleSheet("""
             QListWidget {
-                background-color: white;
-                border: none;
+                border: 1px solid #ccc;
                 border-radius: 12px;
-                padding: 6px;
+                padding: 8px;
+                background-color: white;
             }
             QListWidget::item {
                 background: transparent;
@@ -260,7 +261,6 @@ class DayReportDialog(QDialog):
             QListWidget::item:hover {
                 background: transparent;
             }
-
             QScrollBar:vertical {
                 background: transparent;
                 width: 6px;
@@ -295,15 +295,22 @@ class DayReportDialog(QDialog):
         btn_layout.setSpacing(16)
 
         self.print_btn = QPushButton("Štampaj")
+        self.print_btn.clicked.connect(self.print_report)
         self.print_btn.setStyleSheet("""
             QPushButton {
-                background-color: white;
+                background-color: #22C55E;
+                color: white;
                 font-weight: bold;
                 padding: 8px 20px;
                 border-radius: 24px;
+                border: 1px solid #16a34a;
             }
             QPushButton:hover {
-                background-color: #e5e7eb;
+                background-color: #16a34a;
+                border: 1px solid #15803d;
+            }
+            QPushButton:pressed {
+                background-color: #15803d;
             }
         """)
         self.apply_shadow(self.print_btn)
@@ -311,13 +318,19 @@ class DayReportDialog(QDialog):
         self.cancel_btn = QPushButton("Otkaži")
         self.cancel_btn.setStyleSheet("""
             QPushButton {
-                background-color: white;
+                background-color: #ffffff;
+                color: #374151;
                 font-weight: bold;
                 padding: 8px 20px;
                 border-radius: 24px;
+                border: 1px solid #D1D5DB;
             }
             QPushButton:hover {
-                background-color: #e5e7eb;
+                background-color: #F3F4F6;
+                border: 1px solid #9CA3AF;
+            }
+            QPushButton:pressed {
+                background-color: #E5E7EB;
             }
         """)
         self.cancel_btn.clicked.connect(self.reject)
@@ -363,7 +376,7 @@ class DayReportDialog(QDialog):
 
         logo = QLabel()
         logo_path = "assets/icons/logo.png"
-        logo.setPixmap(QPixmap(logo_path if os.path.exists(logo_path) else "").scaled(36, 36))
+        logo.setPixmap(QPixmap(logo_path if os.path.exists(logo_path) else "").scaled(68, 62))
         layout.addWidget(logo)
 
         title = QLabel("Pretraga po danima")
@@ -399,3 +412,24 @@ class DayReportDialog(QDialog):
         shadow.setOffset(0, 4)
         shadow.setColor(QColor(0, 0, 0, 63))
         widget.setGraphicsEffect(shadow)
+
+    def print_report(self):
+        # Konvertuj QDate u Python date
+        selected_date = self.date_input.date().toPyDate()
+
+        # Povuci podatke
+        patients = self.db_manager.get_patients_by_appointment_date_print_report(selected_date)
+        patient_list = [
+            {
+                "order": i + 1,
+                "full_name": patient[1],
+                "phone_number": patient[6]  # Adjust index based on your DB schema
+            }
+            for i, patient in enumerate(patients)
+        ]
+        logo_path = "assets/icons/pdfLogo.png"
+        try:
+            generate_day_report_pdf(patient_list, logo_path = logo_path)
+        except Exception as e:
+            warning = WarningDialog(f"Greška pri štampi: {str(e)}", self)
+            warning.exec( )
