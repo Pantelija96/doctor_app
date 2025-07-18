@@ -1,3 +1,6 @@
+import os
+import sys
+
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor
 from PyQt6.QtGui import QPixmap, QIcon
@@ -8,6 +11,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QRect
 
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.abspath(relative_path)
 
 class WarningDialog(QDialog):
     def __init__(self, message="Polje 'Ime i prezime' ne sme biti prazno.", parent=None):
@@ -242,7 +249,7 @@ class AddPatientDialog(QDialog):
         layout.setSpacing(0)
 
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(68, 62, Qt.AspectRatioMode.KeepAspectRatio))
+        logo.setPixmap(QPixmap(resource_path("assets/icons/logo.png")).scaled(68, 62, Qt.AspectRatioMode.KeepAspectRatio))
         layout.addWidget(logo, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         title = QLabel("Dodaj pacijenta")
@@ -255,7 +262,7 @@ class AddPatientDialog(QDialog):
         icon_layout.setSpacing(4)
 
         btn_close = QPushButton()
-        btn_close.setIcon(QIcon("assets/icons/close.png"))
+        btn_close.setIcon(QIcon(resource_path("assets/icons/close.png")))
         btn_close.setFixedSize(24, 24)
         btn_close.setStyleSheet("border: none;")
         btn_close.clicked.connect(self.close)

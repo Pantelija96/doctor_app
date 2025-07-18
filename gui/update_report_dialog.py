@@ -1,4 +1,5 @@
 import base64
+import sys
 import tempfile
 
 from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve, QUrl
@@ -8,6 +9,11 @@ from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout,
 import os
 from speech_processor import SpeechProcessor
 from report_generator import generate_appointment_pdf
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.abspath(relative_path)
 
 
 class WarningDialog(QDialog):
@@ -248,7 +254,7 @@ class UpdateReportDialog(QDialog):
 
         # Record button
         self.record_btn = QPushButton("Započni snimanje")
-        record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+        record_icon_path = resource_path("assets/icons/zapocni_snimanje_ikonica.png")
         self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
         self.record_btn.setIconSize(QSize(18, 18))
         self.record_btn.setStyleSheet("""
@@ -346,13 +352,13 @@ class UpdateReportDialog(QDialog):
             if self.speech_processor.start_recording():
                 self.is_recording = True
                 self.record_btn.setText("Zaustavi snimanje")
-                stop_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+                stop_icon_path = resource_path("assets/icons/zapocni_snimanje_ikonica.png")
                 self.record_btn.setIcon(QIcon(stop_icon_path if os.path.exists(stop_icon_path) else ""))
         else:
             audio_path, text = self.speech_processor.stop_recording()
             self.is_recording = False
             self.record_btn.setText("Započni snimanje")
-            record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+            record_icon_path = resource_path("assets/icons/zapocni_snimanje_ikonica.png")
             self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
             if audio_path:
                 self.audio_path = audio_path
@@ -406,7 +412,7 @@ class UpdateReportDialog(QDialog):
         layout.setContentsMargins(10, 0, 10, 0)
 
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(68, 62))
+        logo.setPixmap(QPixmap(resource_path("assets/icons/logo.png")).scaled(68, 62))
         layout.addWidget(logo)
 
         title = QLabel("Izmeni izveštaj")
@@ -414,7 +420,7 @@ class UpdateReportDialog(QDialog):
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
 
         close_btn = QPushButton()
-        close_btn.setIcon(QIcon("assets/icons/close.png"))
+        close_btn.setIcon(QIcon(resource_path("assets/icons/close.png")))
         close_btn.setStyleSheet("border: none;")
         close_btn.setFixedSize(24, 24)
         close_btn.clicked.connect(self.close)
@@ -463,7 +469,7 @@ class UpdateReportDialog(QDialog):
                 raise ValueError("Polje za dijagnozu ne sme biti prazno.")
 
             # 3. Generate base64 PDF
-            base64_pdf = generate_appointment_pdf(patient, diagnose_text, logo_path = "assets/icons/pdfLogo.png")
+            base64_pdf = generate_appointment_pdf(patient, diagnose_text, logo_path = resource_path("assets/icons/pdfLogo.png"))
 
             # 4. Save as temporary PDF file
             pdf_data = base64.b64decode(base64_pdf)

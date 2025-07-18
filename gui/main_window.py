@@ -1,4 +1,5 @@
 import os
+import sys
 from functools import partial
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -16,6 +17,12 @@ from gui.patient_card import PatientCard
 from gui.update_report_dialog import UpdateReportDialog
 from gui.update_patient_dialog import UpdatePatientDialog, WarningDialog
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QRect
+
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.abspath(relative_path)
 
 # Prozori za appointmente!
 
@@ -442,7 +449,8 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)  # Skini sistemski title bar
 
         # Učitaj font
-        font_path = os.path.join("assets", "Inter-VariableFont_opsz,wght.ttf")
+        font_path = resource_path("assets/Inter-VariableFont_opsz,wght.ttf")
+        #font_path = os.path.join("assets", "Inter-VariableFont_opsz,wght.ttf")
         font_id = QFontDatabase.addApplicationFont(font_path)
         if font_id == -1:
             print("Greška: Font nije učitan!")
@@ -786,7 +794,7 @@ class MainWindow(QMainWindow):
     # Dugme za day report!
 
     def on_day_report(self):
-        dialog = DayReportDialog(self.db_manager)
+        dialog = DayReportDialog(self.db_manager, self)
         dialog.exec()
 
 
@@ -803,7 +811,7 @@ class MainWindow(QMainWindow):
 
         # === LOGO ===
         logo = QLabel()
-        logo.setPixmap(QPixmap("assets/icons/logo.png").scaled(74, 68, Qt.AspectRatioMode.KeepAspectRatio))
+        logo.setPixmap(QPixmap(resource_path("assets/icons/logo.png")).scaled(74, 68, Qt.AspectRatioMode.KeepAspectRatio))
         layout.addWidget(logo, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         # === NASLOV ===
@@ -819,19 +827,19 @@ class MainWindow(QMainWindow):
         icon_layout.setSpacing(4)
 
         btn_min = QPushButton()
-        btn_min.setIcon(QIcon("assets/icons/minimize.png"))
+        btn_min.setIcon(QIcon(resource_path("assets/icons/minimize.png")))
         btn_min.setFixedSize(24, 24)
         btn_min.setStyleSheet("border: none;")
         btn_min.clicked.connect(self.showMinimized)
 
         btn_max = QPushButton()
-        btn_max.setIcon(QIcon("assets/icons/maximize.png"))
+        btn_max.setIcon(QIcon(resource_path("assets/icons/maximize.png")))
         btn_max.setFixedSize(24, 24)
         btn_max.setStyleSheet("border: none;")
         btn_max.clicked.connect(self.toggle_maximize_restore)
 
         btn_close = QPushButton()
-        btn_close.setIcon(QIcon("assets/icons/close.png"))
+        btn_close.setIcon(QIcon(resource_path("assets/icons/close.png")))
         btn_close.setFixedSize(24, 24)
         btn_close.setStyleSheet("border: none;")
         btn_close.clicked.connect(self.close)
@@ -840,7 +848,7 @@ class MainWindow(QMainWindow):
         icon_layout.addWidget(btn_max)
         icon_layout.addWidget(btn_close)
 
-        layout.addWidget(icon_container, 0, 2, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(icon_container, 0, 2, alignment=Qt.AlignmentFlag.AlignRight  | Qt.AlignmentFlag.AlignVCenter)
 
         layout.setColumnStretch(0, 1)  # logo
         layout.setColumnStretch(1, 2)  # title
@@ -883,11 +891,12 @@ class MainWindow(QMainWindow):
 
         icon_label = QLabel()
         icon_label.setFixedSize(16, 16)
-        icon_label.setPixmap(QPixmap("assets/icons/search.png").scaled(16, 16))
+        icon_label.setPixmap(QPixmap(resource_path("assets/icons/search.png")).scaled(16, 16))
         icon_label.setStyleSheet("background-color: transparent;")
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Pretraži pacijente")
+        self.search_input.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
         self.search_input.setStyleSheet("border: none; background-color: transparent; font-size: 14px;")
         self.search_input.textChanged.connect(self.filter_patients)
 
@@ -948,6 +957,7 @@ class MainWindow(QMainWindow):
 
         # Dodaj pacijenta
         btn_add_patient = QPushButton("Dodaj pacijenta")
+        btn_add_patient.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
         btn_add_patient.setStyleSheet("""
             QPushButton {
                 background-color: #22C55E;

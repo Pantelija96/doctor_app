@@ -1,12 +1,18 @@
+import sys
+
 from PyQt6.QtCore import Qt, QDate, QPropertyAnimation, QRect, QEasingCurve
 from PyQt6.QtGui import QColor, QIcon, QPixmap, QFont
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QLabel, QDateEdit, \
-    QVBoxLayout, QDialog, QWidget, QListWidget, QAbstractItemView, QSizePolicy, QListWidgetItem
+    QVBoxLayout, QDialog, QWidget, QListWidget, QAbstractItemView, QSizePolicy, QListWidgetItem, QFrame
 import os
 from database_manager import DatabaseManager
 from gui.patient_card import PatientCard
 from report_generator import generate_day_report_pdf
 
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.abspath(relative_path)
 
 class WarningDialog(QDialog):
     def __init__(self, message="Greška!", parent=None):
@@ -160,9 +166,8 @@ class DayReportDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
-                border: 1px solid #6B7280;  /* tamnija siva granica */
+                border: 1px solid #d1d5db;
                 border-radius: 12px;
-                border-style: solid;
             }
         """)
 
@@ -187,9 +192,11 @@ class DayReportDialog(QDialog):
         date_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
         date_label = QLabel("Odaberi datum pregleda:")
+        date_label.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
         date_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #111827;")
 
         self.date_input = QDateEdit()
+        self.date_input.setFont(QFont("Montserrat", 10, QFont.Weight.Medium))
         self.date_input.setDisplayFormat("dd.MM.yyyy.")
         self.date_input.setCalendarPopup(True)
         self.date_input.setDate(QDate.currentDate())
@@ -289,59 +296,58 @@ class DayReportDialog(QDialog):
 
         main_layout.addWidget(content_widget, stretch=1)  # <- srednji deo će se širiti
 
-        # Donja dugmad
-        btn_layout = QHBoxLayout()
-        btn_layout.setContentsMargins(24, 16, 24, 24)
-        btn_layout.setSpacing(16)
+        btn_frame = QFrame()
+        btn_frame.setObjectName("buttonFrame")
 
-        self.print_btn = QPushButton("Štampaj")
-        self.print_btn.clicked.connect(self.print_report)
-        self.print_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #22C55E;
+        # Stil se primenjuje samo na dugmad unutar ovog frame-a
+        btn_frame.setStyleSheet("""
+            QFrame#buttonFrame QPushButton#printBtn {
+                background-color: #0C81E4;  /* Plava */
                 color: white;
                 font-weight: bold;
                 padding: 8px 20px;
                 border-radius: 24px;
-                border: 1px solid #16a34a;
+                border: none;
             }
-            QPushButton:hover {
-                background-color: #16a34a;
-                border: 1px solid #15803d;
+            QFrame#buttonFrame QPushButton#printBtn:hover {
+                background-color: #106FCC;
             }
-            QPushButton:pressed {
-                background-color: #15803d;
-            }
-        """)
-        self.apply_shadow(self.print_btn)
 
-        self.cancel_btn = QPushButton("Otkaži")
-        self.cancel_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #ffffff;
+            QFrame#buttonFrame QPushButton#cancelBtn {
+                background-color: white;
                 color: #374151;
                 font-weight: bold;
                 padding: 8px 20px;
                 border-radius: 24px;
                 border: 1px solid #D1D5DB;
             }
-            QPushButton:hover {
-                background-color: #F3F4F6;
-                border: 1px solid #9CA3AF;
-            }
-            QPushButton:pressed {
-                background-color: #E5E7EB;
+            QFrame#buttonFrame QPushButton#cancelBtn:hover {
+                background-color: #e5e7eb;
             }
         """)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(16)
+        btn_layout.setContentsMargins(24, 16, 24, 24)
+
+        self.print_btn = QPushButton("Štampaj")
+        self.print_btn.setObjectName("printBtn")
+        self.print_btn.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
+        self.print_btn.clicked.connect(self.print_report)
+        self.apply_shadow(self.print_btn)
+
+
+        self.cancel_btn = QPushButton("Otkaži")
+        self.cancel_btn.setObjectName("cancelBtn")
         self.cancel_btn.clicked.connect(self.reject)
+        self.cancel_btn.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
         self.apply_shadow(self.cancel_btn)
 
         btn_layout.addWidget(self.print_btn)
         btn_layout.addWidget(self.cancel_btn)
 
-        btn_widget = QWidget()
-        btn_widget.setLayout(btn_layout)
-        main_layout.addWidget(btn_widget)
+        btn_frame.setLayout(btn_layout)
+        main_layout.addWidget(btn_frame)
 
         self.date_input.dateChanged.connect(self.load_patients_for_date)
 
@@ -375,7 +381,7 @@ class DayReportDialog(QDialog):
         layout.setContentsMargins(10, 0, 10, 0)
 
         logo = QLabel()
-        logo_path = "assets/icons/logo.png"
+        logo_path = resource_path("assets/icons/logo.png")
         logo.setPixmap(QPixmap(logo_path if os.path.exists(logo_path) else "").scaled(68, 62))
         layout.addWidget(logo)
 
@@ -384,7 +390,7 @@ class DayReportDialog(QDialog):
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
 
         close_btn = QPushButton()
-        close_icon_path = "assets/icons/close.png"
+        close_icon_path = resource_path("assets/icons/close.png")
         close_btn.setIcon(QIcon(close_icon_path if os.path.exists(close_icon_path) else ""))
         close_btn.setStyleSheet("border: none;")
         close_btn.setFixedSize(24, 24)
@@ -427,7 +433,7 @@ class DayReportDialog(QDialog):
             }
             for i, patient in enumerate(patients)
         ]
-        logo_path = "assets/icons/pdfLogo.png"
+        logo_path = resource_path("assets/icons/pdfLogo.png")
         try:
             generate_day_report_pdf(patient_list, logo_path = logo_path)
         except Exception as e:

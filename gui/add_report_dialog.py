@@ -1,4 +1,5 @@
 import base64
+import sys
 import tempfile
 import webbrowser
 
@@ -10,6 +11,11 @@ import os
 
 from report_generator import generate_appointment_pdf
 from speech_processor import SpeechProcessor
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.abspath(relative_path)
 
 class WarningDialog(QDialog):
     def __init__(self, message="Niste popunili sva potrebna polja!", parent=None):
@@ -229,7 +235,7 @@ class AddReportDialog(QDialog):
 
         # Record button
         self.record_btn = QPushButton("Započni snimanje")
-        record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+        record_icon_path = resource_path("assets/icons/zapocni_snimanje_ikonica.png")
         self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
         self.record_btn.setIconSize(QSize(18, 18))
         self.record_btn.setStyleSheet("""
@@ -323,13 +329,13 @@ class AddReportDialog(QDialog):
             if self.speech_processor.start_recording():
                 self.is_recording = True
                 self.record_btn.setText("Zaustavi snimanje")
-                stop_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+                stop_icon_path = resource_path("assets/icons/zapocni_snimanje_ikonica.png")
                 self.record_btn.setIcon(QIcon(stop_icon_path if os.path.exists(stop_icon_path) else ""))
         else:
             audio_path, text = self.speech_processor.stop_recording()
             self.is_recording = False
             self.record_btn.setText("Započni snimanje")
-            record_icon_path = "assets/icons/zapocni_snimanje_ikonica.png"
+            record_icon_path = resource_path("assets/icons/zapocni_snimanje_ikonica.png")
             self.record_btn.setIcon(QIcon(record_icon_path if os.path.exists(record_icon_path) else ""))
             if audio_path:
                 self.audio_path = audio_path
@@ -385,7 +391,7 @@ class AddReportDialog(QDialog):
         layout.setContentsMargins(10, 0, 10, 0)
 
         logo = QLabel()
-        logo_path = "assets/icons/logo.png"
+        logo_path = resource_path("assets/icons/logo.png")
         logo.setPixmap(QPixmap(logo_path if os.path.exists(logo_path) else "").scaled(68, 62))
         layout.addWidget(logo)
 
@@ -394,7 +400,7 @@ class AddReportDialog(QDialog):
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
 
         close_btn = QPushButton()
-        close_icon_path = "assets/icons/close.png"
+        close_icon_path = resource_path("assets/icons/close.png")
         close_btn.setIcon(QIcon(close_icon_path if os.path.exists(close_icon_path) else ""))
         close_btn.setStyleSheet("border: none;")
         close_btn.setFixedSize(24, 24)
@@ -444,7 +450,7 @@ class AddReportDialog(QDialog):
                 "address": patient[8] or ""  # address
             }
 
-            logo_path = "assets/icons/pdfLogo.png"
+            logo_path = resource_path("assets/icons/pdfLogo.png")
             pdf_base64 = generate_appointment_pdf(patient_data, diagnose_text, logo_path = logo_path)
 
             # Decode and save as temp PDF
