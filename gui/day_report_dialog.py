@@ -1,9 +1,11 @@
-from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve
-from PyQt6.QtGui import QColor, QIcon, QPixmap
-from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
-    QVBoxLayout, QDialog, QWidget, QLineEdit, QListWidget, QAbstractItemView, QSizePolicy
+from PyQt6.QtCore import Qt, QDate, QPropertyAnimation, QRect, QEasingCurve
+from PyQt6.QtGui import QColor, QIcon, QPixmap, QFont
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QLabel, QDateEdit, \
+    QVBoxLayout, QDialog, QWidget, QListWidget, QAbstractItemView, QSizePolicy, QListWidgetItem
 import os
 from database_manager import DatabaseManager
+from gui.patient_card import PatientCard
+
 
 class WarningDialog(QDialog):
     def __init__(self, message="Greška!", parent=None):
@@ -147,9 +149,10 @@ class SuccessDialog(QDialog):
         self.animation.start()
 
 class DayReportDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, db_manager, parent=None):
         super().__init__(parent)
         print("DayReportDialog initialized")  # Debug
+        self.db_manager = db_manager
         self.setWindowTitle("Pregled dana")
         self.resize(500, 550)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
@@ -326,6 +329,28 @@ class DayReportDialog(QDialog):
         btn_widget = QWidget()
         btn_widget.setLayout(btn_layout)
         main_layout.addWidget(btn_widget)
+
+        self.date_input.dateChanged.connect(self.load_patients_for_date)
+
+    def load_patients_for_date(self, date: QDate):
+        self.patient_list.clear()  # očisti staro
+
+        # Konvertuj QDate u Python date
+        selected_date = date.toPyDate()
+
+        # Povuci podatke
+        patients = self.db_manager.get_patients_by_appointment_date(selected_date)
+
+        for patient in patients:
+            patient_id, full_name, birthday, address, gender, note = patient
+            birth_year = QDate.fromString(birthday, "yyyy-MM-dd").year() if isinstance(birthday, str) else birthday.year
+
+            card = PatientCard(full_name, str(birth_year))
+            item = QListWidgetItem()
+            item.setSizeHint(card.sizeHint())
+
+            self.patient_list.addItem(item)
+            self.patient_list.setItemWidget(item, card)
 
     def create_title_bar(self):
         title_bar = QWidget()
