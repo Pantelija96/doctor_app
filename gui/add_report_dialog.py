@@ -3,8 +3,8 @@ import sys
 import tempfile
 import webbrowser
 
-from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve, QUrl
-from PyQt6.QtGui import QColor, QIcon, QPixmap, QDesktopServices
+from PyQt6.QtCore import Qt, QDate, QSize, QPropertyAnimation, QRect, QEasingCurve
+from PyQt6.QtGui import QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QHBoxLayout, QTextEdit, QLabel, QDateEdit, \
     QVBoxLayout, QDialog, QWidget
 import os
@@ -24,7 +24,7 @@ class WarningDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
-                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border: 1px solid #d1d5db;
                 border-radius: 12px;
             }
             QLabel {
@@ -71,13 +71,10 @@ class WarningDialog(QDialog):
     def slide_in_animation(self):
         screen = self.screen().availableGeometry()
         end_rect = self.geometry()
-
-        # Pozicioniraj dijalog pre animacije ispod vidljivog dela
         start_x = (screen.width() - end_rect.width()) // 2
         start_y = screen.height()
         end_x = start_x
         end_y = (screen.height() - end_rect.height()) // 2
-
         self.setGeometry(start_x, start_y, end_rect.width(), end_rect.height())
 
         self.animation = QPropertyAnimation(self, b"geometry")
@@ -94,7 +91,7 @@ class SuccessDialog(QDialog):
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
-                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border: 1px solid #d1d5db;
                 border-radius: 12px;
             }
             QLabel {
@@ -128,7 +125,6 @@ class SuccessDialog(QDialog):
         layout.addWidget(self.label)
         layout.addWidget(self.ok_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # === Primeni shadow efekat na OK dugme ===
         self.apply_shadow(self.ok_btn)
         self.slide_in_animation()
 
@@ -142,13 +138,10 @@ class SuccessDialog(QDialog):
     def slide_in_animation(self):
         screen = self.screen().availableGeometry()
         end_rect = self.geometry()
-
-        # Pozicioniraj dijalog pre animacije ispod vidljivog dela
         start_x = (screen.width() - end_rect.width()) // 2
         start_y = screen.height()
         end_x = start_x
         end_y = (screen.height() - end_rect.height()) // 2
-
         self.setGeometry(start_x, start_y, end_rect.width(), end_rect.height())
 
         self.animation = QPropertyAnimation(self, b"geometry")
@@ -161,31 +154,30 @@ class SuccessDialog(QDialog):
 class AddReportDialog(QDialog):
     def __init__(self, patient_id, db_manager, refresh_callback=None, parent=None):
         super().__init__(parent)
-        print("AddReportDialog initialized")  # Debug
         self.patient_id = patient_id
         self.db_manager = db_manager
         self.refresh_callback = refresh_callback
         self.setWindowTitle("Dodaj izveštaj")
         self.resize(500, 550)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        self.setStyleSheet("background-color: white;")
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
-                border: 1px solid #d1d5db;  /* svetlosiva granica */
+                border: 1px solid #d1d5db;
                 border-radius: 12px;
             }
         """)
 
-        # Initialize SpeechProcessor with updated audio directory
-        appdata_path = os.getenv('APPDATA') or os.path.expanduser('~/AppData/Roaming')
-        audio_dir = os.path.join(appdata_path, 'DoctorApp', 'data', 'audio')
+        # Initialize SpeechProcessor
+        self.speech_processor = None
         try:
+            appdata_path = os.getenv('APPDATA') or os.path.expanduser('~/AppData/Roaming')
+            audio_dir = os.path.join(appdata_path, 'DoctorApp', 'audio')
             self.speech_processor = SpeechProcessor(audio_dir)
         except Exception as e:
             warning = WarningDialog(f"Greška pri inicijalizaciji snimanja: {str(e)}", self)
             warning.exec()
-            self.speech_processor = None
+
         self.is_recording = False
         self.audio_path = None
 
@@ -206,12 +198,44 @@ class AddReportDialog(QDialog):
         self.date_input.setDisplayFormat("dd.MM.yyyy.")
         self.date_input.setDate(QDate.currentDate())
         self.date_input.setFixedHeight(36)
-        self.date_input.setStyleSheet(""" QDateEdit { border: 1px solid #ccc; background-color: white; padding: 6px; border-radius: 10px; } QDateEdit::drop-down { subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border-left: 1px solid #ccc; } QDateEdit::down-arrow { image: url(assets/icons/down-arrow.png); width: 12px; height: 12px; } """)
+        self.date_input.setStyleSheet("""
+            QDateEdit {
+                border: 1px solid #ccc;
+                background-color: white;
+                padding: 6px;
+                border-radius: 10px;
+            }
+            QDateEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #ccc;
+            }
+            QDateEdit::down-arrow {
+                image: url(assets/icons/down-arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+        """)
         self.apply_shadow(self.date_input)
 
         calendar = self.date_input.calendarWidget()
-        calendar.setStyleSheet(
-            """ QCalendarWidget QToolButton#qt_calendar_prevmonth, QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(assets/icons/left-arrow.png); width: 24px; height: 24px; icon-size: 12px; border-radius: 12px; } QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(assets/icons/right-arrow.png); } QCalendarWidget QToolButton { color: black; } """)
+        calendar.setStyleSheet("""
+            QCalendarWidget QToolButton#qt_calendar_prevmonth, 
+            QCalendarWidget QToolButton#qt_calendar_nextmonth {
+                qproperty-icon: url(assets/icons/left-arrow.png);
+                width: 24px;
+                height: 24px;
+                icon-size: 12px;
+                border-radius: 12px;
+            }
+            QCalendarWidget QToolButton#qt_calendar_nextmonth {
+                qproperty-icon: url(assets/icons/right-arrow.png);
+            }
+            QCalendarWidget QToolButton {
+                color: black;
+            }
+        """)
 
         content_layout.addWidget(QLabel("Datum pregleda"))
         content_layout.addWidget(self.date_input)
@@ -329,7 +353,7 @@ class AddReportDialog(QDialog):
             if self.speech_processor.start_recording():
                 self.is_recording = True
                 self.record_btn.setText("Zaustavi snimanje")
-                stop_icon_path = resource_path("assets/icons/zapocni_snimanje_ikonica.png")
+                stop_icon_path = resource_path("assets/icons/close.png")
                 self.record_btn.setIcon(QIcon(stop_icon_path if os.path.exists(stop_icon_path) else ""))
         else:
             audio_path, text = self.speech_processor.stop_recording()
@@ -340,8 +364,8 @@ class AddReportDialog(QDialog):
             if audio_path:
                 self.audio_path = audio_path
 
-    def handle_transcription(self, audio_path, text):
-        if audio_path:
+    def handle_transcription(self, text, audio_path):
+        if text is not None:
             self.audio_path = audio_path
             current_text = self.diagnose_input.toPlainText().strip()
             if current_text:
@@ -349,7 +373,7 @@ class AddReportDialog(QDialog):
             else:
                 self.diagnose_input.setPlainText(text)
         else:
-            warning = WarningDialog(text, self)
+            warning = WarningDialog(audio_path, self)
             warning.exec()
 
     def save_report(self):
@@ -384,9 +408,7 @@ class AddReportDialog(QDialog):
     def create_title_bar(self):
         title_bar = QWidget()
         title_bar.setFixedHeight(40)
-        title_bar.setStyleSheet("background-color: #0C81E4;"
-                                "border-top-left-radius: 12px;"
-                                "border-top-right-radius: 12px;")
+        title_bar.setStyleSheet("background-color: #0C81E4; border-top-left-radius: 12px; border-top-right-radius: 12px;")
         layout = QHBoxLayout(title_bar)
         layout.setContentsMargins(10, 0, 10, 0)
 
@@ -431,36 +453,33 @@ class AddReportDialog(QDialog):
 
     def print_pdf(self):
         try:
-            # Get current inputs
-            diagnose_text = self.diagnose_input.toPlainText( ).strip( )
+            diagnose_text = self.diagnose_input.toPlainText().strip()
             if not diagnose_text:
                 warning = WarningDialog("Unesite dijagnozu pre štampe.", self)
-                warning.exec( )
+                warning.exec()
                 return
 
             patient = self.db_manager.get_patient(self.patient_id)
             if not patient:
                 warning = WarningDialog("Podaci o pacijentu nisu pronađeni.", self)
-                warning.exec( )
+                warning.exec()
                 return
 
             patient_data = {
-                "full_name": f"{patient[1]} {patient[2]}",  # name + last_name
-                "birthday": patient[7],  # birthday
-                "address": patient[8] or ""  # address
+                "full_name": f"{patient[1]} {patient[2]}",
+                "birthday": patient[7],
+                "address": patient[8] or ""
             }
 
             logo_path = resource_path("assets/icons/pdfLogo.png")
-            pdf_base64 = generate_appointment_pdf(patient_data, diagnose_text, logo_path = logo_path)
+            pdf_base64 = generate_appointment_pdf(patient_data, diagnose_text, logo_path=logo_path)
 
-            # Decode and save as temp PDF
             pdf_data = base64.b64decode(pdf_base64)
-            with tempfile.NamedTemporaryFile(delete = False, suffix = ".pdf") as f:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as f:
                 f.write(pdf_data)
                 temp_path = f.name
 
-            # Open in default web browser
             webbrowser.open(f"file:///{temp_path.replace(os.sep, '/')}")
         except Exception as e:
             warning = WarningDialog(f"Greška pri štampi: {str(e)}", self)
-            warning.exec( )
+            warning.exec()

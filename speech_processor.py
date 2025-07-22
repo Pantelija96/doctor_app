@@ -1,17 +1,35 @@
-import pyaudio
+import os
+import sys
 import whisper
+import pyaudio
 import numpy as np
 import threading
 import torch
-import time
-import logging
-import os
 import wave
 import datetime
 from PyQt6.QtCore import pyqtSignal, QObject
+import torchaudio
+import logging
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Ensure audio directory exists before logging setup
+def get_audio_dir(base_dir):
+    appdata_path = os.getenv('APPDATA') or os.path.expanduser('~/AppData/Roaming')
+    audio_dir = os.path.join(appdata_path, 'DoctorApp', base_dir)
+    os.makedirs(audio_dir, exist_ok=True)
+    return audio_dir
+
+# Set up logging after creating audio directory
+audio_dir = get_audio_dir('audio')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler(os.path.join(audio_dir, 'app.log'))]
+)
+
+# Set FFmpeg path
+if getattr(sys, 'frozen', False):
+    os.environ["PATH"] += os.pathsep + sys._MEIPASS
+    torchaudio.set_audio_backend("ffmpeg")
 
 # Serbian Cyrillic to Latin mapping
 CYRILLIC_TO_LATIN = {
@@ -28,96 +46,94 @@ CYRILLIC_TO_LATIN = {
 def cyrillic_to_latin(text):
     return ''.join(CYRILLIC_TO_LATIN.get(char, char) for char in text)
 
+def resource_path(relative_path):
+    base_path = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
+def get_model_path(model_name):
+    return resource_path(f'whisper/assets/{model_name}.pt')
+
 class SpeechProcessor(QObject):
-    transcription_completed = pyqtSignal(str, str)  # Signal for (audio_path, text)
+    transcription_completed = pyqtSignal(str, str)  # (text, audio_path)
 
     def __init__(self, audio_dir):
         super().__init__()
-        self.audio_dir = audio_dir
-        os.makedirs(self.audio_dir, exist_ok=True)
+        self.audio_dir = get_audio_dir(audio_dir)
         self.model = None
         self.recording = False
         self.frames = []
         self.stop_event = None
         self.recording_thread = None
         try:
-            self.model = whisper.load_model("small")
-            logging.info(f"Whisper model 'medium' loaded. CUDA available: {torch.cuda.is_available()}")
+            model_path = get_model_path("small")
+            self.model = whisper.load_model(model_path)
+            logging.info(f"Whisper model 'small' loaded. CUDA: {torch.cuda.is_available()}")
         except Exception as e:
             logging.error(f"Failed to load Whisper model: {e}")
-            self.transcription_completed.emit(None, "Failed to load Whisper model.")
+            self.transcription_completed.emit(None, f"Failed to load Whisper model: {str(e)}")
 
-    def record_audio(self):
+    def start_recording(self):
+        try:
+            if self.recording:
+                return False
+            self.recording = True
+            self.frames = []
+            self.stop_event = threading.Event()
+            self.recording_thread = threading.Thread(target=self._record)
+            self.recording_thread.start()
+            return True
+        except Exception as e:
+            logging.error(f"Error starting recording: {e}")
+            self.transcription_completed.emit(None, f"Failed to start recording: {str(e)}")
+            return False
+
+    def _record(self):
         try:
             p = pyaudio.PyAudio()
-            stream = p.open(
-                format=pyaudio.paInt16,
-                channels=1,
-                rate=16000,
-                input=True,
-                frames_per_buffer=1024
-            )
-            logging.info("Recording started...")
-            while not self.stop_event.is_set():
+            stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1024)
+            while self.recording and not self.stop_event.is_set():
                 data = stream.read(1024, exception_on_overflow=False)
                 self.frames.append(data)
             stream.stop_stream()
             stream.close()
             p.terminate()
-            logging.info(f"Recording stopped, captured {len(self.frames)} frames")
         except Exception as e:
-            logging.error(f"Recording failed: {e}")
-            self.stop_event.set()
+            logging.error(f"Error during recording: {e}")
             self.transcription_completed.emit(None, f"Recording failed: {str(e)}")
 
-    def start_recording(self):
-        if self.recording or not self.model:
-            logging.warning("Cannot start recording: already recording or model not loaded")
-            return False
-        self.recording = True
-        self.frames = []
-        self.stop_event = threading.Event()
-        self.recording_thread = threading.Thread(target=self.record_audio)
-        self.recording_thread.start()
-        logging.info("Recording thread started")
-        return True
-
     def stop_recording(self):
-        if not self.recording:
-            logging.warning("Cannot stop recording: not recording")
-            return None, None
         try:
+            if not self.recording:
+                return None, "No recording to stop."
+            self.recording = False
             self.stop_event.set()
             self.recording_thread.join()
-            self.recording = False
-            # Save audio to file
-            audio_path = os.path.join(self.audio_dir, f"recording_{int(datetime.datetime.now().timestamp())}.wav")
-            wf = wave.open(audio_path, "wb")
+            audio_file = os.path.join(self.audio_dir, f"recording_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.wav")
+            wf = wave.open(audio_file, 'wb')
             wf.setnchannels(1)
-            wf.setsampwidth(pyaudio.PyAudio().get_sample_size(pyaudio.paInt16))
+            wf.setsampwidth(2)
             wf.setframerate(16000)
-            wf.writeframes(b"".join(self.frames))
+            wf.writeframes(b''.join(self.frames))
             wf.close()
-            file_size = os.path.getsize(audio_path)
-            logging.info(f"Audio saved to {audio_path}, size: {file_size} bytes")
-            # Transcribe
-            audio_data = b"".join(self.frames)
-            audio_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
-            start_time = time.time()
-            result = self.model.transcribe(audio=audio_np, language="sr", fp16=torch.cuda.is_available())
-            transcription_time = time.time() - start_time
-            text = result["text"].strip()
-            if text:
-                # Convert to Serbian Latin
-                text = cyrillic_to_latin(text)
-                logging.info(f"Transcription (Latin): {text}")
-                logging.info(f"Transcription took {transcription_time:.2f} seconds")
-            else:
-                logging.warning("Transcription resulted in empty text")
-                text = "Transkripcija nije uspela."
-            self.transcription_completed.emit(audio_path, text)
-            return audio_path, text
+            logging.info(f"Audio saved to: {audio_file}")
+            text = self.transcribe(audio_file)
+            return audio_file, text
         except Exception as e:
-            logging.error(f"Stop recording or transcription failed: {e}")
-            self.transcription_completed.emit(None, f"Transkripcija nije uspela: {str(e)}")
-            return None, None
+            logging.error(f"Error stopping recording: {e}")
+            self.transcription_completed.emit(None, f"Failed to save audio: {str(e)}")
+            return None, f"Failed to save audio: {str(e)}"
+
+    def transcribe(self, audio_file):
+        try:
+            if not os.path.exists(audio_file):
+                raise FileNotFoundError(f"Audio file not found: {audio_file}")
+            result = self.model.transcribe(audio_file, language="sr", verbose=True)
+            text = result["text"]
+            latin_text = cyrillic_to_latin(text)
+            logging.info(f"Transcription result: {latin_text}")
+            self.transcription_completed.emit(latin_text, audio_file)
+            return latin_text
+        except Exception as e:
+            logging.error(f"Error during transcription: {e}")
+            self.transcription_completed.emit(None, f"Transcription failed: {str(e)}")
+            return f"Transcription failed: {str(e)}"
