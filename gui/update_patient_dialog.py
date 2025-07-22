@@ -138,15 +138,51 @@ class UpdatePatientDialog(QDialog):
         self.date_input.setFixedHeight(36)
         self.date_input.setMinimumWidth(320)
         self.apply_shadow(self.date_input)
-        down_arrow = resource_path('assets/icons/down-arrow.png')
-        self.date_input.setStyleSheet(
-            f""" QDateEdit {{ border: 1px solid #ccc; background-color: white; padding: 6px; border-radius: 10px; }}
-            QDateEdit::drop-down {{ subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border-left: 1px solid #ccc; }}
-            QDateEdit::down-arrow {{ image: url({down_arrow}); width: 12px; height: 12px; }} """)
+        down_arrow_path = resource_path("assets/icons/down-arrow.png").replace("\\", "/")
+
+        self.date_input.setStyleSheet(f"""
+                    QDateEdit {{
+                        border: 1px solid #ccc;
+                        background-color: white;
+                        padding: 6px;
+                        border-radius: 10px;
+                    }}
+                    QDateEdit::drop-down {{
+                        subcontrol-origin: padding;
+                        subcontrol-position: top right;
+                        width: 24px;
+                        border-left: 1px solid #ccc;
+                    }}
+                    QDateEdit::down-arrow {{
+                        image: url({down_arrow_path});
+                        width: 12px;
+                        height: 12px;
+                    }}
+        """)
+
+        left_arrow_path = resource_path("assets/icons/left-arrow.png").replace("\\", "/")
+        right_arrow_path = resource_path("assets/icons/right-arrow.png").replace("\\", "/")
 
         calendar = self.date_input.calendarWidget()
-        calendar.setStyleSheet(
-            """ QCalendarWidget QToolButton#qt_calendar_prevmonth, QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(assets/icons/left-arrow.png); width: 24px; height: 24px; icon-size: 12px; border-radius: 12px; } QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(assets/icons/right-arrow.png); } QCalendarWidget QToolButton { color: black; } """)
+        calendar.setStyleSheet(f"""
+                   QCalendarWidget QToolButton#qt_calendar_prevmonth {{
+                       qproperty-icon: url({left_arrow_path});
+                       width: 24px;
+                       height: 24px;
+                       icon-size: 12px;
+                       border-radius: 12px;
+                   }}
+                   QCalendarWidget QToolButton#qt_calendar_nextmonth {{
+                       qproperty-icon: url({right_arrow_path});
+                       width: 24px;
+                       height: 24px;
+                       icon-size: 12px;
+                       border-radius: 12px;
+                   }}
+                   QCalendarWidget QToolButton {{
+                       color: black;
+                   }}
+        """)
 
         self.gender_input = QComboBox()
         self.gender_input.addItems(["Male", "Female", "Other"])
@@ -154,8 +190,32 @@ class UpdatePatientDialog(QDialog):
         left_layout.addWidget(self.gender_input)
         self.gender_input.setFixedHeight(36)
         self.gender_input.setMinimumWidth(320)
-        self.gender_input.setStyleSheet(
-            """ QComboBox { padding: 4px; border: 1px solid #ccc; border-radius: 10px; background-color: #ffffff; } QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border-left: 1px solid #ccc; } QComboBox::down-arrow { image: url(assets/icons/down-arrow.png); width: 12px; height: 12px; } QComboBox QAbstractItemView { border: 1px solid #ccc; border-radius: 8px; background-color: white; selection-background-color: #0C81E4; selection-color: white; } """)
+        self.gender_input.setStyleSheet(f"""
+                    QComboBox {{
+                        padding: 4px;
+                        border: 1px solid #ccc;
+                        border-radius: 10px;
+                        background-color: #ffffff;
+                    }}
+                    QComboBox::drop-down {{
+                        subcontrol-origin: padding;
+                        subcontrol-position: top right;
+                        width: 24px;
+                        border-left: 1px solid #ccc;
+                    }}
+                    QComboBox::down-arrow {{
+                        image: url({down_arrow_path});
+                        width: 12px;
+                        height: 12px;
+                    }}
+                    QComboBox QAbstractItemView {{
+                        border: 1px solid #ccc;
+                        border-radius: 8px;
+                        background-color: white;
+                        selection-background-color: #0C81E4;
+                        selection-color: white;
+                    }}
+        """)
         self.apply_shadow(self.gender_input)
 
         self.address_input = QLineEdit()
