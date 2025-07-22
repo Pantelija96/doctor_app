@@ -444,7 +444,7 @@ class MainWindow(QMainWindow):
     def __init__(self, db_manager: DatabaseManager):
         super().__init__()
         self.db_manager = db_manager
-        self.setWindowTitle("Doktorska evidencija")
+        self.setWindowTitle("Doktorska evidencija test")
         self.resize(1000, 700)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)  # Skini sistemski title bar
 

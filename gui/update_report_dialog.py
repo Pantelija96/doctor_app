@@ -207,12 +207,55 @@ class UpdateReportDialog(QDialog):
         self.date_input.setDisplayFormat("dd.MM.yyyy.")
         self.date_input.setDate(QDate.currentDate())
         self.date_input.setFixedHeight(36)
-        self.date_input.setStyleSheet(""" QDateEdit { border: 1px solid #ccc; background-color: white; padding: 6px; border-radius: 10px; } QDateEdit::drop-down { subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border-left: 1px solid #ccc; } QDateEdit::down-arrow { image: url(assets/icons/down-arrow.png); width: 12px; height: 12px; } """)
+
+        down_arrow_path = resource_path("assets/icons/down-arrow.png").replace("\\", "/")
+
+        self.date_input.setStyleSheet(f"""
+                    QDateEdit {{
+                        border: 1px solid #ccc;
+                        background-color: white;
+                        padding: 6px;
+                        border-radius: 10px;
+                    }}
+                    QDateEdit::drop-down {{
+                        subcontrol-origin: padding;
+                        subcontrol-position: top right;
+                        width: 24px;
+                        border-left: 1px solid #ccc;
+                    }}
+                    QDateEdit::down-arrow {{
+                        image: url({down_arrow_path});
+                        width: 12px;
+                        height: 12px;
+                    }}
+        """)
+
         self.apply_shadow(self.date_input)
 
+        left_arrow_path = resource_path("assets/icons/left-arrow.png").replace("\\", "/")
+        right_arrow_path = resource_path("assets/icons/right-arrow.png").replace("\\", "/")
+
         calendar = self.date_input.calendarWidget()
-        calendar.setStyleSheet(
-            """ QCalendarWidget QToolButton#qt_calendar_prevmonth, QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(assets/icons/left-arrow.png); width: 24px; height: 24px; icon-size: 12px; border-radius: 12px; } QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(assets/icons/right-arrow.png); } QCalendarWidget QToolButton { color: black; } """)
+
+        calendar.setStyleSheet(f"""
+                    QCalendarWidget QToolButton#qt_calendar_prevmonth {{
+                        qproperty-icon: url({left_arrow_path});
+                        width: 24px;
+                        height: 24px;
+                        icon-size: 12px;
+                        border-radius: 12px;
+                    }}
+                    QCalendarWidget QToolButton#qt_calendar_nextmonth {{
+                        qproperty-icon: url({right_arrow_path});
+                        width: 24px;
+                        height: 24px;
+                        icon-size: 12px;
+                        border-radius: 12px;
+                    }}
+                    QCalendarWidget QToolButton {{
+                        color: black;
+                    }}
+        """)
 
         content_layout.addWidget(QLabel("Datum pregleda"))
         content_layout.addWidget(self.date_input)
