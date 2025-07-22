@@ -138,8 +138,11 @@ class UpdatePatientDialog(QDialog):
         self.date_input.setFixedHeight(36)
         self.date_input.setMinimumWidth(320)
         self.apply_shadow(self.date_input)
+        down_arrow = resource_path('assets/icons/down-arrow.png')
         self.date_input.setStyleSheet(
-            """ QDateEdit { border: 1px solid #ccc; background-color: white; padding: 6px; border-radius: 10px; } QDateEdit::drop-down { subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border-left: 1px solid #ccc; } QDateEdit::down-arrow { image: url(assets/icons/down-arrow.png); width: 12px; height: 12px; } """)
+            f""" QDateEdit {{ border: 1px solid #ccc; background-color: white; padding: 6px; border-radius: 10px; }}
+            QDateEdit::drop-down {{ subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border-left: 1px solid #ccc; }}
+            QDateEdit::down-arrow {{ image: url({down_arrow}); width: 12px; height: 12px; }} """)
 
         calendar = self.date_input.calendarWidget()
         calendar.setStyleSheet(

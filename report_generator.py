@@ -1,4 +1,5 @@
 import base64
+import sys
 import tempfile
 import webbrowser
 from io import BytesIO
@@ -12,14 +13,18 @@ from reportlab.lib import colors
 import os
 
 # === Font setup ===
-FONT_PATH = os.path.join("assets", "DejaVuSans.ttf")
-if os.path.exists(FONT_PATH):
-    pdfmetrics.registerFont(TTFont("DejaVuSans", FONT_PATH))
-else:
-    raise FileNotFoundError("Font file not found at: " + FONT_PATH)
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 # === Main PDF generator ===
 def generate_appointment_pdf(patient_data, diagnose_text, logo_path=None):
+    font_path = resource_path("assets/DejaVuSans.ttf")
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont("DejaVuSans", font_path))
+    else:
+        raise FileNotFoundError("Font file not found at: " + font_path)
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
 
@@ -103,6 +108,11 @@ def generate_appointment_pdf(patient_data, diagnose_text, logo_path=None):
 
 # === New function for daily report PDF ===
 def generate_day_report_pdf(patient_list, logo_path=None):
+    font_path = resource_path("assets/DejaVuSans.ttf")
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont("DejaVuSans", font_path))
+    else:
+        raise FileNotFoundError("Font file not found at: " + font_path)
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
 
