@@ -530,8 +530,9 @@ class MainWindow(QMainWindow):
 
         patients = self.db_manager.get_all_patients()
         for i, patient in enumerate(patients):
-            full_name = patient[1]
-            birthday = patient[2]
+            full_name = patient[3]
+            birthday = patient[7]
+            print(f"Pacijent: {full_name}, Rođen: {birthday}")
             if birthday:
                 birth_year = str(birthday).split("-")[0]
             else:
@@ -562,11 +563,12 @@ class MainWindow(QMainWindow):
             self.load_appointment_history(patient[0])  # Dodaj ovo
 
     def update_patient_info(self, patient):
-        full_name = patient[1] or "-"
-        birth_date = patient[2] or "-"
-        address = patient[3] or "-"
-        gender = patient[4] or "-"
-        note = patient[5] or ""
+        full_name = patient[3] or "-"
+        phone = patient[4] or "-"
+        gender = patient[6] or "-"
+        birth_date = patient[7] or "-"
+        address = patient[8] or "-"
+        note = patient[9] or ""
 
         birth_date_str = "-"
         try:
@@ -584,11 +586,13 @@ class MainWindow(QMainWindow):
         self.label_birthday.setText(f"Datum rođenja: {birth_date_str}")
         self.label_address.setText(f"Adresa: {address}")
         self.label_gender.setText(f"Pol: {gender}")
+        self.label_phone.setText(f"Telefon: {phone}")
         self.note_edit.setPlainText(note)
 
         self.history_list.clear()  # zasad prazno
 
     def on_add_patient(self):
+        print("on_add_patient pozvan")
 
         dialog = AddPatientDialog(self)
         if dialog.exec():  # ako je kliknuto "Sačuvaj"
@@ -603,11 +607,11 @@ class MainWindow(QMainWindow):
             self.db_manager.add_patient(
                 name=name,
                 last_name=last_name,
-                birthday=data["birthday"],
-                gender=data["gender"],
-                address=data["address"],
-                phone_number=None,
+                phone_number=data["phone_number"],
                 email=None,
+                gender=data["gender"],
+                birthday=data["birthday"],
+                address=data["address"],
                 note=data["note"]
             )
 
@@ -640,6 +644,7 @@ class MainWindow(QMainWindow):
                 "gender": patient_data[6],  # gender
                 "address": patient_data[8],  # address
                 "note": patient_data[9],  # note
+                "phone_number": patient_data[4] # phone number
             })
         except IndexError as e:
             print("Greška pri učitavanju podataka:", e)
@@ -656,6 +661,7 @@ class MainWindow(QMainWindow):
                 name=name,
                 last_name=last_name,
                 birthday=updated["birthday"],
+                phone_number=updated["phone_number"],
                 gender=updated["gender"],
                 address=updated["address"],
                 note=updated["note"]
@@ -1039,11 +1045,13 @@ class MainWindow(QMainWindow):
         self.label_birthday = QLabel()
         self.label_address = QLabel()
         self.label_gender = QLabel()
+        self.label_phone = QLabel()
 
         grid.addWidget(self.label_name, 0, 0)
         grid.addWidget(self.label_birthday, 1, 0)
         grid.addWidget(self.label_address, 2, 0)
         grid.addWidget(self.label_gender, 3, 0)
+        grid.addWidget(self.label_phone, 4, 0)
 
         info_layout.addLayout(grid)
 

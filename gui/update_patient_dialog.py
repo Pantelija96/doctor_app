@@ -6,7 +6,7 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QDateEdit, QComboBox, QWidget, QGridLayout, QTextEdit
+    QDateEdit, QComboBox, QWidget, QGridLayout, QTextEdit, QSizePolicy
 )
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QRect
@@ -91,7 +91,7 @@ class UpdatePatientDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Izmeni pacijenta")
-        self.resize(800, 450)
+        self.resize(800, 550)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: white;")
         self.setStyleSheet("""
@@ -185,7 +185,7 @@ class UpdatePatientDialog(QDialog):
         """)
 
         self.gender_input = QComboBox()
-        self.gender_input.addItems(["Male", "Female", "Other"])
+        self.gender_input.addItems(["Muško", "Žensko", "Drugo"])
         left_layout.addWidget(QLabel("Pol:"))
         left_layout.addWidget(self.gender_input)
         self.gender_input.setFixedHeight(36)
@@ -228,6 +228,16 @@ class UpdatePatientDialog(QDialog):
             """ QLineEdit { padding: 8px; border: 1px solid #ccc; border-radius: 8px; background-color: #ffffff; } """)
         self.apply_shadow(self.address_input)
 
+        self.phone_input = QLineEdit()
+        self.phone_input.setPlaceholderText("Telefon")
+        left_layout.addWidget(QLabel("Telefon:"))
+        left_layout.addWidget(self.phone_input)
+        self.phone_input.setFixedHeight(36)
+        self.phone_input.setMinimumWidth(320)
+        self.phone_input.setStyleSheet(
+            """ QLineEdit { padding: 8px; border: 1px solid #ccc; border-radius: 8px; background-color: #ffffff; } """)
+        self.apply_shadow(self.phone_input)
+
         # Dugmad
         btn_layout = QHBoxLayout()
         self.save_btn = QPushButton("Izmeni")
@@ -269,13 +279,14 @@ class UpdatePatientDialog(QDialog):
         right_layout.setSpacing(3)
         self.note_input = QTextEdit()
         self.note_input.setPlaceholderText("Unesite napomenu...")
-        self.note_input.setFixedHeight(350)
         self.note_input.setStyleSheet(
             """ QTextEdit { border: 1px solid #ccc; border-radius: 12px; padding: 8px; background-color: white; } """)
         self.apply_shadow(self.note_input)
-        right_layout.addWidget(QLabel("Napomena:"))
+        note_label = QLabel("Napomena:")
+        note_label.setContentsMargins(0, 0, 0, 10)
+        right_layout.addWidget(note_label, alignment=Qt.AlignmentFlag.AlignTop)
         right_layout.addWidget(self.note_input)
-        self.note_input.setMinimumHeight(250)
+        self.note_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Spoji obe kolone
         content_layout.addLayout(left_layout)
@@ -298,7 +309,8 @@ class UpdatePatientDialog(QDialog):
             "birthday": self.date_input.date().toString("yyyy-MM-dd"),
             "gender": self.gender_input.currentText(),
             "address": self.address_input.text(),
-            "note": self.note_input.toPlainText()
+            "note": self.note_input.toPlainText(),
+            "phone_number": self.phone_input.text()
         }
 
     def set_data(self, data: dict):
@@ -312,6 +324,7 @@ class UpdatePatientDialog(QDialog):
 
         self.gender_input.setCurrentText(data["gender"])
         self.address_input.setText(data["address"])
+        self.phone_input.setText(data["phone_number"])
         self.note_input.setText(data["note"])
 
     def create_title_bar(self):

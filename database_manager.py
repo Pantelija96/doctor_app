@@ -27,7 +27,7 @@ class DatabaseManager:
                         full_name TEXT NOT NULL,
                         phone_number TEXT,
                         email TEXT,
-                        gender TEXT CHECK(gender IN ('Male', 'Female', 'Other')),
+                        gender TEXT,
                         birthday DATE NOT NULL,
                         address TEXT,
                         note TEXT
@@ -135,7 +135,7 @@ class DatabaseManager:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT id, full_name, birthday, address, gender, note FROM patient")
+                cursor.execute("SELECT id, name, last_name, full_name, phone_number, email, gender, birthday, address, note FROM patient")
                 return cursor.fetchall()
         except sqlite3.Error as e:
             log_error(f"Get all patients failed: {e}")
