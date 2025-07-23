@@ -1,16 +1,16 @@
-import base64
+import os
 import sys
+import base64
 import tempfile
 import webbrowser
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib import colors
-import os
 
 # === Font setup ===
 def resource_path(relative_path):
@@ -122,13 +122,14 @@ def generate_day_report_pdf(patient_list, logo_path=None):
         "fontSize": 13,
         "leading": 18,
     }
+    table_paragraph_style = ParagraphStyle("TableText", fontName="DejaVuSans", fontSize=10, leading=12, alignment=TA_LEFT)
 
     elements = []
 
     # === Logo and header ===
     if logo_path and os.path.exists(logo_path):
         try:
-            logo = Image(logo_path, width=128, height=45)  # matches generate_appointment_pdf
+            logo = Image(logo_path, width=128, height=45)
             logo_table = Table([[logo]], colWidths=[128])
             logo_table.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -140,7 +141,7 @@ def generate_day_report_pdf(patient_list, logo_path=None):
         except Exception:
             pass
 
-    # Contact Info (same as generate_appointment_pdf)
+    # Contact Info
     elements += [
         Paragraph("Grocka, Bulevar Oslobođenja 56", ParagraphStyle("Header", **base_style)),
         Paragraph("Tel: 011 850 35 50, 063 425 827", ParagraphStyle("Header2", **base_style)),
@@ -160,37 +161,41 @@ def generate_day_report_pdf(patient_list, logo_path=None):
     )
 
     # === Patient Table ===
-    # Prepare table data: Order, Full Name, Phone Number
-    table_data = [["Redni broj", "Ime i prezime"]]
+    # Prepare table data: Order, Full Name, Phone Number, Birthday
+    table_data = [["#", "Ime i prezime", "Broj telefona", "Datum rođenja"]]
     for patient in patient_list:
-        order = patient.get("order", "")
-        full_name = patient.get("full_name", "")
-        table_data.append([str(order), full_name])
+        order = str(patient.get("order", ""))
+        full_name = Paragraph(patient.get("full_name", ""), table_paragraph_style)
+        phone_number = Paragraph(patient.get("phone_number", "/"), table_paragraph_style)
+        birthday = Paragraph(patient.get("birthday", ""), table_paragraph_style)
+        table_data.append([order, full_name, phone_number, birthday])
 
-    # Create table
-    table = Table(table_data, colWidths=[60, 300, 150])
+    # Create table with adjusted column widths
+    table = Table(table_data, colWidths=[50, 200, 120, 100])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'),
-        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (1, 1), (3, -1), 5),
+        ('RIGHTPADDING', (1, 1), (3, -1), 5),
     ]))
     elements.append(table)
     elements.append(Spacer(1, 40))
 
-    # === Footer (same as generate_appointment_pdf) ===
+    # === Footer ===
     footer_text = (
         "Pacijent je obavešten o dijagnozi, prognozi, vremenu trajanja i uspešnosti lečenja i pristaje na predloženu medicinsku meru. "
         "Predočene su mu eventualne posledice preuzimanja i ne preuzimanja predložene medicinske mere. "
         "Shodno članu 11 i članovima 15 do 19 Zakona o pravima pacijenata (Sl. glasnik broj 45/2013)."
     )
-    elements.append(Spacer(1, 100))  # Push footer to bottom
+    elements.append(Spacer(1, 100))
     elements.append(Paragraph(footer_text, ParagraphStyle("Legal", **{**base_style, "alignment": TA_JUSTIFY})))
 
     # === Build PDF ===
@@ -198,7 +203,7 @@ def generate_day_report_pdf(patient_list, logo_path=None):
     pdf = buffer.getvalue()
     buffer.close()
 
-    # === Save to temporary file and open in default browser ===
+    # === Save to temporary file and open ===
     pdf_data = base64.b64decode(base64.b64encode(pdf).decode("utf-8"))
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as f:
         f.write(pdf_data)
