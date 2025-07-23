@@ -433,11 +433,13 @@ class DayReportDialog(QDialog):
 
         # Povuci podatke
         patients = self.db_manager.get_patients_by_appointment_date_print_report(selected_date)
+        print(patients)
         patient_list = [
             {
                 "order": i + 1,
                 "full_name": patient[1],
-                "phone_number": patient[6]  # Adjust index based on your DB schema
+                "birthday": patient[2],
+                "phone_number": patient[6]
             }
             for i, patient in enumerate(patients)
         ]
