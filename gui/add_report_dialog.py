@@ -362,7 +362,7 @@ class AddReportDialog(QDialog):
             if self.speech_processor.start_recording():
                 self.is_recording = True
                 self.record_btn.setText("Zaustavi snimanje")
-                stop_icon_path = resource_path("assets/icons/close.png")
+                stop_icon_path = resource_path("assets/icons/zapocni_snimanje_ikonica.png")
                 self.record_btn.setIcon(QIcon(stop_icon_path if os.path.exists(stop_icon_path) else ""))
         else:
             audio_path, text = self.speech_processor.stop_recording()
