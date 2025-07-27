@@ -406,7 +406,7 @@ class UpdateReportDialog(QDialog):
             if audio_path:
                 self.audio_path = audio_path
 
-    def handle_transcription(self, audio_path, text):
+    def handle_transcription(self, text, audio_path):
         if audio_path:
             self.audio_path = audio_path
             current_text = self.diagnose_input.toPlainText().strip()
