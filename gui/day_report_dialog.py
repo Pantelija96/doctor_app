@@ -444,7 +444,7 @@ class DayReportDialog(QDialog):
         ]
         logo_path = resource_path("assets/icons/pdfLogo.png")
         try:
-            generate_day_report_pdf(patient_list, logo_path = logo_path)
+            generate_day_report_pdf(patient_list, selected_date.strftime('%d-%m-%Y'), logo_path = logo_path)
         except Exception as e:
             warning = WarningDialog(f"Greška pri štampi: {str(e)}", self)
             warning.exec( )

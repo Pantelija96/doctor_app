@@ -107,7 +107,7 @@ def generate_appointment_pdf(patient_data, diagnose_text, logo_path=None):
     return base64.b64encode(pdf).decode("utf-8")
 
 # === New function for daily report PDF ===
-def generate_day_report_pdf(patient_list, logo_path=None):
+def generate_day_report_pdf(patient_list, selected_date, logo_path=None):
     font_path = resource_path("assets/DejaVuSans.ttf")
     if os.path.exists(font_path):
         pdfmetrics.registerFont(TTFont("DejaVuSans", font_path))
@@ -152,7 +152,7 @@ def generate_day_report_pdf(patient_list, logo_path=None):
 
     # === Title ===
     elements.append(
-        Paragraph("Dnevni izveštaj", ParagraphStyle("Title", **{
+        Paragraph("Dnevni izveštaj : "+selected_date, ParagraphStyle("Title", **{
             **base_style,
             "fontSize": 18,
             "alignment": TA_CENTER,
