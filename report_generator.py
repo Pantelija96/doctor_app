@@ -85,7 +85,7 @@ def generate_appointment_pdf(patient_data, diagnose_text, logo_path=None):
         Paragraph(diagnose_text.replace("\n", "<br />"), ParagraphStyle("DiagText", **base_style)),
         Spacer(1, 40),
 
-        Paragraph(f"Datum i mesto: {datetime.today().strftime("%d.%m.%Y")} Beograd, Grocka <br /> Lekar: Vladislav Pavlović",
+        Paragraph(f"Datum i mesto: {datetime.today().strftime('%d.%m.%Y')} Beograd, Grocka <br /> Lekar: Vladislav Pavlović",
                   ParagraphStyle("Date", **base_style)),
 
         Spacer(1, 100),  # This will help push the footer down; tweak if necessary

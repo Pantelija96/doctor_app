@@ -532,7 +532,6 @@ class MainWindow(QMainWindow):
         for i, patient in enumerate(patients):
             full_name = patient[3]
             birthday = patient[7]
-            print(f"Pacijent: {full_name}, Rođen: {birthday}")
             if birthday:
                 birth_year = str(birthday).split("-")[0]
             else:
@@ -563,6 +562,7 @@ class MainWindow(QMainWindow):
             self.load_appointment_history(patient[0])  # Dodaj ovo
 
     def update_patient_info(self, patient):
+        patient_id = patient[0] #ID odnosno pacijentov karton
         full_name = patient[3] or "-"
         phone = patient[4] or "-"
         gender = patient[6] or "-"
@@ -583,6 +583,7 @@ class MainWindow(QMainWindow):
             birth_date_str = str(birth_date)
 
         self.label_name.setText(f"Pacijent: {full_name}")
+        self.label_id.setText(f"Broj kartona: {patient_id}")
         self.label_birthday.setText(f"Datum rođenja: {birth_date_str}")
         self.label_address.setText(f"Adresa: {address}")
         self.label_gender.setText(f"Pol: {gender}")
@@ -683,13 +684,36 @@ class MainWindow(QMainWindow):
             self.load_patients()
 
     def filter_patients(self, text):
-        text = text.lower()
-        for i in range(self.patient_list.count()):
-            item = self.patient_list.item(i)
-            widget = self.patient_list.itemWidget(item)
-            if isinstance(widget, PatientCard):  # Dodaj sigurnosnu proveru
-                full_name = widget.name_label.text().lower()
-                item.setHidden(text not in full_name)
+        text = text.strip()
+        if not text:
+            # Ako nema unosa, prikaži sve pacijente
+            self.load_patients()
+            return
+
+        # 🔍 Dobavi filtrirane pacijente iz baze
+        patients = self.db_manager.search_patients(text)
+
+        # Očisti listu i kartice
+        self.patient_list.clear()
+        self.cards = []
+
+        # Dodaj samo pronađene pacijente
+        for patient in patients:
+            full_name = patient[3]  # full_name je na indexu 3
+            birthday = patient[7]  # birthday na indexu 7
+            birth_year = str(birthday).split("-")[0] if birthday else "N/A"
+
+            card = PatientCard(full_name, birth_year)
+            item = QListWidgetItem()
+            item.setSizeHint(card.sizeHint())
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+
+            self.patient_list.addItem(item)
+            self.patient_list.setItemWidget(item, card)
+            self.cards.append(card)
+
+        # 🔗 Poveži selekciju na novu listu
+        self.patient_list.currentRowChanged.connect(self.select_patient)
 
     # Funkcije vezane za appointmente!
 
@@ -1042,16 +1066,18 @@ class MainWindow(QMainWindow):
         self.label_name = QLabel()
         self.label_name.setStyleSheet("font-weight: bold;")
 
+        self.label_id = QLabel()
         self.label_birthday = QLabel()
         self.label_address = QLabel()
         self.label_gender = QLabel()
         self.label_phone = QLabel()
 
         grid.addWidget(self.label_name, 0, 0)
-        grid.addWidget(self.label_birthday, 1, 0)
-        grid.addWidget(self.label_address, 2, 0)
-        grid.addWidget(self.label_gender, 3, 0)
-        grid.addWidget(self.label_phone, 4, 0)
+        grid.addWidget(self.label_id, 1, 0)
+        grid.addWidget(self.label_birthday, 2, 0)
+        grid.addWidget(self.label_address, 3, 0)
+        grid.addWidget(self.label_gender, 4, 0)
+        grid.addWidget(self.label_phone, 5, 0)
 
         info_layout.addLayout(grid)
 
