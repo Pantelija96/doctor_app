@@ -436,6 +436,7 @@ class DayReportDialog(QDialog):
         patient_list = [
             {
                 "order": i + 1,
+                "id": patient[0],
                 "full_name": patient[1],
                 "birthday": patient[2],
                 "phone_number": patient[6]

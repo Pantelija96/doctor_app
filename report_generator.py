@@ -3,6 +3,7 @@ import sys
 import base64
 import tempfile
 import webbrowser
+from datetime import datetime
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -79,12 +80,12 @@ def generate_appointment_pdf(patient_data, diagnose_text, logo_path=None):
         Paragraph(f"<b>Adresa:</b> {patient_data.get('address', '')}", ParagraphStyle("Body2", **base_style)),
         Spacer(1, 12),
 
-        Paragraph("<b>Uputna dijagnoza:</b>", ParagraphStyle("DiagTitle", **base_style)),
+        Paragraph(" ", ParagraphStyle("DiagTitle", **base_style)),
         Spacer(1, 6),
         Paragraph(diagnose_text.replace("\n", "<br />"), ParagraphStyle("DiagText", **base_style)),
         Spacer(1, 40),
 
-        Paragraph("Datum i mesto: ____________________________         Lekar: ____________________________",
+        Paragraph(f"Datum i mesto: {datetime.today().strftime("%d.%m.%Y")} Beograd, Grocka <br /> Lekar: Vladislav Pavlović",
                   ParagraphStyle("Date", **base_style)),
 
         Spacer(1, 100),  # This will help push the footer down; tweak if necessary
@@ -162,16 +163,17 @@ def generate_day_report_pdf(patient_list, selected_date, logo_path=None):
 
     # === Patient Table ===
     # Prepare table data: Order, Full Name, Phone Number, Birthday
-    table_data = [["#", "Ime i prezime", "Broj telefona", "Datum rođenja"]]
+    table_data = [["#", "Broj kartona", "Ime i prezime", "Broj telefona", "Datum rođenja"]]
     for patient in patient_list:
         order = str(patient.get("order", ""))
+        id = str(patient.get("id", ""))
         full_name = Paragraph(patient.get("full_name", ""), table_paragraph_style)
         phone_number = Paragraph(patient.get("phone_number", "/"), table_paragraph_style)
         birthday = Paragraph(patient.get("birthday", ""), table_paragraph_style)
-        table_data.append([order, full_name, phone_number, birthday])
+        table_data.append([order, id, full_name, phone_number, birthday])
 
     # Create table with adjusted column widths
-    table = Table(table_data, colWidths=[50, 200, 120, 100])
+    table = Table(table_data, colWidths=[50, 100, 200, 120, 100])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),

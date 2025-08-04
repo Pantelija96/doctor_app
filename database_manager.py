@@ -144,14 +144,25 @@ class DatabaseManager:
     def search_patients(self, query):
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT * FROM patient WHERE full_name LIKE ? LIMIT 100",
-                    (f"%{query}%",)
-                )
-                return cursor.fetchall()
+                cursor = conn.cursor( )
+                # Check if query is numeric for ID search
+                if query.isdigit( ):
+                    cursor.execute(
+                        "SELECT * FROM patient WHERE id = ? OR full_name LIKE ? LIMIT 100",
+                        (int(query), f"%{query}%")
+                    )
+                else:
+                    # Only search by name if query is non-numeric
+                    cursor.execute(
+                        "SELECT * FROM patient WHERE full_name LIKE ? LIMIT 100",
+                        (f"%{query}%",)
+                    )
+                return cursor.fetchall( )
         except sqlite3.Error as e:
             log_error(f"Search patients failed: {e}")
+            return []
+        except ValueError as e:
+            log_error(f"Invalid query format: {e}")
             return []
 
     def add_appointment(self, id_patient, date, diagnose_text=None, diagnose_sound=None):
